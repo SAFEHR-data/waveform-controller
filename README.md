@@ -38,7 +38,7 @@ emap docker up -d
 ```
 uv venv .waveform-controller
 source .waveform-controller/bin/activate
-uv pip install .
+uv pip install . --active
 ```
 
 ## 3 Check if it's working
