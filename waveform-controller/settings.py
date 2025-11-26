@@ -9,3 +9,4 @@ RABBITMQ_USERNAME = "my_name"
 RABBITMQ_PASSWORD = "my_pw"
 RABBITMQ_HOST = "localhost"
 RABBITMQ_PORT = 5672
+RABBITMQ_QUEUE = "waveform"

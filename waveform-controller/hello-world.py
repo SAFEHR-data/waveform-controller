@@ -27,7 +27,7 @@ def receiver():
     connection_parameters = pika.ConnectionParameters(credentials = rabbitmq_credentials, host=settings.RABBITMQ_HOST, port = settings.RABBITMQ_PORT)
     connection = pika.BlockingConnection(connection_parameters)
     channel = connection.channel()
-    channel.basic_consume(queue='waveform', auto_ack = False, on_message_callback = emap_db.waveform_callback)
+    channel.basic_consume(queue=settings.RABBITMQ_QUEUE, auto_ack = False, on_message_callback = emap_db.waveform_callback)
     channel.start_consuming()
 
 
