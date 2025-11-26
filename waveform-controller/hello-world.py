@@ -1,5 +1,7 @@
 import pika
 import json
+import settings
+import db
 
 """
 A script to receive messages in the waveform queue and write them to stdout, 
@@ -18,12 +20,19 @@ def match_waveform_to_mrn(body : dict):
 def waveform_callback(ch, method, properties, body):
     
     data = json.loads(body)
+    location_string = data.get('mappedLocationString', 'unknown')
+    observation_time = data.get('observationTime', 'NaT')
     #print(f"Received a waveform message {data.get('observationTime', 'NAT')}")
-    print(f"Received a waveform message {data}")
+    print(f"Received a waveform message from {location_string} at {observation_time}")
 
 def receiver():
-    rabbitmq_credentials = pika.PlainCredentials(username = "my_name", password = "my_pw")
-    connection_parameters = pika.ConnectionParameters(credentials = rabbitmq_credentials, host='localhost', port = 5672)
+    # set up database connection
+    emap_db = db.starDB()
+    emap_db.init_query()
+    emap_db.connect()
+
+    rabbitmq_credentials = pika.PlainCredentials(username = settings.RABBITMQ_USERNAME, password = settings.RABBITMQ_PASSWORD)
+    connection_parameters = pika.ConnectionParameters(credentials = rabbitmq_credentials, host=settings.RABBITMQ_HOST, port = settings.RABBITMQ_PORT)
     connection = pika.BlockingConnection(connection_parameters)
     channel = connection.channel()
     channel.basic_consume(queue='waveform', auto_ack = False, on_message_callback = waveform_callback)
