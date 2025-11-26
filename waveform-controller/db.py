@@ -1,6 +1,8 @@
 import psycopg2
 from psycopg2 import sql
 import settings
+import json
+from datetime import datetime, timedelta
 
 class starDB:
 
@@ -22,16 +24,28 @@ class starDB:
             self.sql_query = sql.SQL(file.read())
         self.sql_query = self.sql_query.format(schema_name = sql.Identifier(settings.SCHEMA_NAME))
 
-    def get_row(location_string : str, start_datetime : str, end_datetime : str):
+    def get_row(self, location_string : str, start_datetime : str, end_datetime : str):
         parameters = { "location_string" : location_string, 
                       "start_datetime" : start_datetime, 
                       "end_datetime" : end_datetime } 
         
-        with conn.cursor() as curs:
+        with self.db_connection.cursor() as curs:
             curs.execute(self.sql_query, parameters)
             single_row = curs.fetchone()
         
         return single_row
+
+    def waveform_callback(self, ch, method, properties, body):
+
+        data = json.loads(body)
+        location_string = data.get('mappedLocationString', 'unknown')
+        observation_time = data.get('observationTime', 'NaT')
+        observation_time = datetime.fromtimestamp(observation_time)
+        start_time_window = observation_time - timedelta(hours = 24)
+        matched_mrn = self.get_row(location_string, start_time_window, observation_time)
+        #print(f"Received a waveform message {data.get('observationTime', 'NAT')}")
+        print(f"Received a waveform message from {location_string} at {observation_time} with matching mrn = {matched_mrn}")
+
 
 
 
