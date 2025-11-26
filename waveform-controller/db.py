@@ -41,10 +41,15 @@ class starDB:
         location_string = data.get('mappedLocationString', 'unknown')
         observation_time = data.get('observationTime', 'NaT')
         observation_time = datetime.fromtimestamp(observation_time)
-        start_time_window = observation_time - timedelta(hours = 24)
-        matched_mrn = self.get_row(location_string, start_time_window, observation_time)
+        # I found in testing that to find the first patient I had to go back 7 months. I'm not sure this
+        # is expected, but I suppose an ICU patient could occupy a bed for a long time. Let's use 
+        # 52 weeks for now.
+        start_time = observation_time - timedelta(weeks = 52)
+        obs_time_str = observation_time.strftime("%Y-%m-%d:%H:%M:%S")
+        start_time_str = start_time.strftime("%Y-%m-%d:%H:%M:%S")
+        matched_mrn = self.get_row(location_string, start_time_str, obs_time_str)
         #print(f"Received a waveform message {data.get('observationTime', 'NAT')}")
-        print(f"Received a waveform message from {location_string} at {observation_time} with matching mrn = {matched_mrn}")
+        print(f"Received a waveform message from {location_string} at {obs_time_str} with matching mrn = {matched_mrn}")
 
 
 
