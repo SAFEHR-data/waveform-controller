@@ -49,4 +49,4 @@ python waveform_controller.py
 ```
 
 # Developing
-See [developing docs](docs/develop)
+See [developing docs](docs/develop.md)
