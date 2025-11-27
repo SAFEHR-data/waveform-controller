@@ -45,7 +45,7 @@ uv pip install . --active
 
 If successful you should be able to run the demo script and see waveform messaged dumped to the terminal.
 ```
-python hello-world.py
+python waveform_controller.py
 ```
 
 # Developing

@@ -10,7 +10,7 @@ repos:
       - id: ruff
         args:
           - --fix
-          - waveform-controller
+          - waveform_controller
       - id: ruff-format
   # Type-checking python code.
   - repo: https://github.com/pre-commit/mirrors-mypy

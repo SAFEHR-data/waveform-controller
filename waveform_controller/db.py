@@ -7,21 +7,19 @@ import waveform_controller.settings as settings
 
 
 class starDB:
-    db_connection: psycopg2.connect = None
-    sql_query: psycopg2.sql.SQL = None
-
-    def connect(self):
-        connection_string = "dbname={} user={} password={} host={} port={}".format(
-            settings.UDS_DBNAME,
-            settings.UDS_USERNAME,
-            settings.UDS_PASSWORD,
-            settings.UDS_HOST,
-            settings.UDS_PORT,
-        )
-        self.db_connection = psycopg2.connect(connection_string)
+    sql_query: str = ""
+    connection_string: str = "dbname={} user={} password={} host={} port={}".format(
+        settings.UDS_DBNAME,
+        settings.UDS_USERNAME,
+        settings.UDS_PASSWORD,
+        settings.UDS_HOST,
+        settings.UDS_PORT,
+    )
 
     def init_query(self):
-        with open("sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
+        with open(
+            "waveform_controller/sql/mrn_based_on_bed_and_datetime.sql", "r"
+        ) as file:
             self.sql_query = sql.SQL(file.read())
         self.sql_query = self.sql_query.format(
             schema_name=sql.Identifier(settings.SCHEMA_NAME)
@@ -33,10 +31,10 @@ class starDB:
             "start_datetime": start_datetime,
             "end_datetime": end_datetime,
         }
-
-        with self.db_connection.cursor() as curs:
-            curs.execute(self.sql_query, parameters)
-            single_row = curs.fetchone()
+        with psycopg2.connect(self.connection_string) as db_connection:
+            with db_connection.cursor() as curs:
+                curs.execute(self.sql_query, parameters)
+                single_row = curs.fetchone()
 
         return single_row
 
@@ -56,7 +54,3 @@ class starDB:
         print(
             f"Received a waveform message from {location_string} at {obs_time_str} with matching mrn = {matched_mrn}"
         )
-
-
-# the username and password come from docker compose for the fake uds.
-# I'm not sure why the port is 5433 not 5432
