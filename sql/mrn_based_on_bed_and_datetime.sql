@@ -1,10 +1,11 @@
-/* Find a medical record number (MRN) and NHS number based on location
-string and date time. Returns a list of MRN and NHS numbers with the
+/* Find a medical record number (MRN), NHS number, and contact serial number (CSN) based on location
+string and date time. Returns a list of MRN, NHS numbers, and CSN with the
 first entry being the most recent.
 */
 SELECT
   mn.mrn as mrn,
-  mn.nhs_number as nhs_number
+  mn.nhs_number as nhs_number,
+  hv.encounter as csn
 FROM {schema_name}.mrn mn
 INNER JOIN {schema_name}.hospital_visit hv
   ON mn.mrn_id = hv.mrn_id
