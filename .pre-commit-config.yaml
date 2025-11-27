@@ -32,11 +32,6 @@ repos:
       - id: docformatter
         additional_dependencies: [tomli]
         args: [--config=pyproject.toml]
-  # Strips output from notebooks!
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.8.1
-    hooks:
-      - id: nbstripout
   # a collection of sanity checks: check for merge conflicts, check the end of
   # lines, check for DOS vs unix stuff, and a newline at the end of files.
   - repo: https://github.com/pre-commit/pre-commit-hooks
