@@ -1,5 +1,4 @@
 import pika
-import json
 import settings
 import db
 
@@ -8,10 +7,11 @@ A script to receive messages in the waveform queue and write them to stdout,
 based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 """
 
-def match_waveform_to_mrn(body : dict):
+
+def match_waveform_to_mrn(body: dict):
     """
     Queries a star schema to find a medical record number (MRN)
-    and NHS number that is likely to correspond to the 
+    and NHS number that is likely to correspond to the
     waveform message
     """
     return "mrn"
@@ -23,11 +23,21 @@ def receiver():
     emap_db.init_query()
     emap_db.connect()
 
-    rabbitmq_credentials = pika.PlainCredentials(username = settings.RABBITMQ_USERNAME, password = settings.RABBITMQ_PASSWORD)
-    connection_parameters = pika.ConnectionParameters(credentials = rabbitmq_credentials, host=settings.RABBITMQ_HOST, port = settings.RABBITMQ_PORT)
+    rabbitmq_credentials = pika.PlainCredentials(
+        username=settings.RABBITMQ_USERNAME, password=settings.RABBITMQ_PASSWORD
+    )
+    connection_parameters = pika.ConnectionParameters(
+        credentials=rabbitmq_credentials,
+        host=settings.RABBITMQ_HOST,
+        port=settings.RABBITMQ_PORT,
+    )
     connection = pika.BlockingConnection(connection_parameters)
     channel = connection.channel()
-    channel.basic_consume(queue=settings.RABBITMQ_QUEUE, auto_ack = False, on_message_callback = emap_db.waveform_callback)
+    channel.basic_consume(
+        queue=settings.RABBITMQ_QUEUE,
+        auto_ack=False,
+        on_message_callback=emap_db.waveform_callback,
+    )
     channel.start_consuming()
 
 

@@ -1,4 +1,4 @@
-UDS_DBNAME = "fakeuds" 
+UDS_DBNAME = "fakeuds"
 UDS_USERNAME = "inform_user"
 UDS_PASSWORD = "inform"
 UDS_HOST = "localhost"

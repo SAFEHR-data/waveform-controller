@@ -1,6 +1,6 @@
 A controller for reading waveform data from a rabbitmq queue and processing it. 
 
-# Developing
+# Running the Code
 ## 1 Install and deploy EMAP
 Follow the emap development [instructions](https://github.com/SAFEHR-data/emap/blob/main/docs/dev/core.md#deploying-a-live-version "Instructions for deploying a live version of EMAP") configure and deploy a version of EMAP. To run a local version you'll need to set 
 
@@ -47,3 +47,6 @@ If successful you should be able to run the demo script and see waveform message
 ```
 python hello-world.py
 ```
+
+# Developing
+See [docs/develop]
