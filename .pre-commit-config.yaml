@@ -1,0 +1,47 @@
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--exclude-secrets=(^my_pw$)|(^inform$)]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.2
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+          - waveform_controller
+      - id: ruff-format
+  # Type-checking python code.
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: [--config-file=pyproject.toml]
+        additional_dependencies:
+          [
+            "types-psycopg2",
+            "types-pika"
+          ]
+        files: waveform_controller/
+  # ----------
+  # Formats docstrings to comply with PEP257
+  - repo: https://github.com/PyCQA/docformatter
+    rev: 06907d0
+    hooks:
+      - id: docformatter
+        additional_dependencies: [tomli]
+        args: [--config=pyproject.toml]
+  # a collection of sanity checks: check for merge conflicts, check the end of
+  # lines, check for DOS vs unix stuff, and a newline at the end of files.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args:
+          - --fix=lf
