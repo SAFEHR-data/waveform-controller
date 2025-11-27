@@ -1,6 +1,6 @@
 import pika
-import settings
-import db
+import waveform_controller.db as db
+import waveform_controller.settings as settings
 
 """
 A script to receive messages in the waveform queue and write them to stdout, 

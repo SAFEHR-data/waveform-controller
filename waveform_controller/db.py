@@ -1,8 +1,9 @@
 import psycopg2
 from psycopg2 import sql
-import settings
 import json
 from datetime import datetime, timedelta
+
+import waveform_controller.settings as settings
 
 
 class starDB:
@@ -20,7 +21,7 @@ class starDB:
         self.db_connection = psycopg2.connect(connection_string)
 
     def init_query(self):
-        with open("../sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
+        with open("sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
             self.sql_query = sql.SQL(file.read())
         self.sql_query = self.sql_query.format(
             schema_name=sql.Identifier(settings.SCHEMA_NAME)

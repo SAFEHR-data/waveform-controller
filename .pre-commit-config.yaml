@@ -21,6 +21,7 @@ repos:
         additional_dependencies:
           [
             "types-psycopg2",
+            "types-pika"
           ]
         files: waveform_controller/
   # ----------
