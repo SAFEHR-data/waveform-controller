@@ -36,16 +36,16 @@ emap docker up -d
 ## 2 Install and deploy waveform controller using uv
 
 ```
-uv venv .waveform-controller
-source .waveform-controller/bin/activate
-uv pip install . --active
+cd .../waveform-controller
+docker compose build
+docker compose up -d
 ```
 
 ## 3 Check if it's working
 
-If successful you should be able to run the demo script and see waveform messaged dumped to the terminal.
+Waveform messages should be dumped to the log file:
 ```
-python waveform_controller.py
+docker compose logs
 ```
 
 # Developing
