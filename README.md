@@ -33,7 +33,7 @@ Once configured you can start it with
 emap docker up -d
 ```
 
-## 2 Install and deploy waveform reader using uv
+## 2 Install and deploy waveform controller using uv
 
 ```
 uv venv .waveform-controller

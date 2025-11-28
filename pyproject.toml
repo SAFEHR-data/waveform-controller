@@ -9,3 +9,6 @@ dependencies = [
     "pre-commit>=4.5.0",
     "psycopg2-binary>=2.9.11",
 ]
+
+[project.scripts]
+emap-extract-waveform = "waveform_controller.controller:receiver"
