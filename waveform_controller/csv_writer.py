@@ -2,6 +2,7 @@
 
 import csv
 from datetime import datetime
+from pathlib import Path
 
 
 def create_file_name(
@@ -28,6 +29,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     observation_datetime = datetime.fromtimestamp(observationTime)
     units = waveform_message.get("unit", "None")
 
+    Path("waveform_data").mkdir(exist_ok=True)
     filename = create_file_name(sourceSystem, observation_datetime, csn, units)
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
