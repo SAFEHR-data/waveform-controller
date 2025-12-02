@@ -11,7 +11,7 @@ def create_file_name(
     """Create a unique file name based on the patient contact serial number
     (csn) the date, and the source system."""
     datestring = observationTime.strftime("%Y-%m-%d")
-    return f"waveform_data/{datestring}.{csn}.{sourceSystem}.{units}.csv"
+    return f"{datestring}.{csn}.{sourceSystem}.{units}.csv"
 
 
 def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
@@ -29,8 +29,12 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     observation_datetime = datetime.fromtimestamp(observationTime)
     units = waveform_message.get("unit", "None")
 
-    Path("waveform_data").mkdir(exist_ok=True)
-    filename = create_file_name(sourceSystem, observation_datetime, csn, units)
+    out_path = "waveform_data/"
+    Path(out_path).mkdir(exist_ok=True)
+
+    filename = out_path + create_file_name(
+        sourceSystem, observation_datetime, csn, units
+    )
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
         wv_writer.writerow(
