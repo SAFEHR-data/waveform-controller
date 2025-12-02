@@ -10,11 +10,11 @@ import waveform_controller.csv_writer as writer
 class starDB:
     sql_query: str = ""
     connection_string: str = "dbname={} user={} password={} host={} port={}".format(
-        settings.UDS_DBNAME,
-        settings.UDS_USERNAME,
-        settings.UDS_PASSWORD,
-        settings.UDS_HOST,
-        settings.UDS_PORT,
+        settings.UDS_DBNAME,  # type:ignore
+        settings.UDS_USERNAME,  # type:ignore
+        settings.UDS_PASSWORD,  # type:ignore
+        settings.UDS_HOST,  # type:ignore
+        settings.UDS_PORT,  # type:ignore
     )
 
     def init_query(self):
@@ -55,8 +55,5 @@ class starDB:
         start_time_str = start_time.strftime("%Y-%m-%d:%H:%M:%S")
         matched_mrn = self.get_row(location_string, start_time_str, obs_time_str)
 
-        # print(f"Received a waveform message {data.get('observationTime', 'NAT')}")
-        print(
-            f"Received a waveform message from {location_string} at {obs_time_str} with matching mrn = {matched_mrn}"
-        )
-        writer.write_frame(data, matched_mrn[2], matched_mrn[0])
+        if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
+            ch.basic_ack(method.delivery_tag)

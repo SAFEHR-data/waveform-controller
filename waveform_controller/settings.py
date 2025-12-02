@@ -1,10 +1,11 @@
 import os
-from pathlib import Path
+
 
 def get_from_env(env_var, setting_name=None):
     if setting_name is None:
         setting_name = env_var
     globals()[setting_name] = os.environ.get(env_var)
+
 
 # read env vars into settings variables
 get_from_env("UDS_DBNAME")
