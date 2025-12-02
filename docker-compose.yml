@@ -10,4 +10,6 @@ services:
         https_proxy: ${https_proxy}
     # ideally we'd use docker secrets but it's not enabled currently
     env_file:
-      - ./config/settings.env
+     - ./config/settings.env
+    volumes:
+      - ./waveform_data:/app/waveform_data
