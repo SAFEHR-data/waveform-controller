@@ -48,6 +48,4 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
             ]
         )
 
-    # TODO Check write success, and clear queue if OK.
-
-    return False
+    return True
