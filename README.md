@@ -33,20 +33,32 @@ Once configured you can start it with
 emap docker up -d
 ```
 
-## 2 Install and deploy waveform controller using uv
+## 2 Install and deploy waveform controller using docker
+
+Configuration, copy the configuration file to the config directory and edit 
+as necessary.
 
 ```
-cd .../waveform-controller
+cp settings.env.EXAMPLE config/settings.env
+```
+
+Build and start the controller with docker
+```
+cd ../waveform-controller
 docker compose build
 docker compose up -d
 ```
 
 ## 3 Check if it's working
 
-Waveform messages should be dumped to the log file:
-```
-docker compose logs
-```
+Running the controller will create a `waveform_data` directory where waveform messages
+matched to Contact Serial Number (CSN) will be saved as csv files, each containing data for
+one calender day, as
+`YYYY-MM-DD.CSN.sourceName.units.csv`
+
+Each row of the csv will contain
+
+`csn, mrn, units, samplingRate, observationTime, waveformData`
 
 # Developing
 See [developing docs](docs/develop.md)
