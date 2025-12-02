@@ -43,10 +43,18 @@ uv pip install . --active
 
 ## 3 Check if it's working
 
-If successful you should be able to run the demo script and see waveform messaged dumped to the terminal.
+If successful you should be able to run the waveform controller with.
 ```
 python waveform_controller.py
 ```
+Running the controller will create a `waveform_data` directory where waveform messages
+matched to Contact Serial Number (CSN) will be saved as csv files, each containing data for
+one calender day, as
+`YYYY-MM-DD.CSN.sourceName.units.csv`
+
+Each row of the csv will contain
+
+`csn, mrn, units, samplingRate, observationTime, waveformData`
 
 # Developing
 See [developing docs](docs/develop.md)
