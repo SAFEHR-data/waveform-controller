@@ -29,7 +29,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     observation_datetime = datetime.fromtimestamp(observationTime)
     units = waveform_message.get("unit", "None")
 
-    out_path = "waveform_data/"
+    out_path = "waveform-export/"
     Path(out_path).mkdir(exist_ok=True)
 
     filename = out_path + create_file_name(

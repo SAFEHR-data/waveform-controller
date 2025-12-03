@@ -12,4 +12,4 @@ services:
     env_file:
      - ./config/settings.env
     volumes:
-      - ./waveform_data:/app/waveform_data
+      - ../waveform-export:/app/waveform-export

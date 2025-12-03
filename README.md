@@ -1,33 +1,33 @@
-A controller for reading waveform data from a rabbitmq queue and processing it. 
+A controller for reading waveform data from a rabbitmq queue and processing it.
 
 # Running the Code
 ## 1 Install and deploy EMAP
-Follow the emap development [instructions](https://github.com/SAFEHR-data/emap/blob/main/docs/dev/core.md#deploying-a-live-version "Instructions for deploying a live version of EMAP") configure and deploy a version of EMAP. To run a local version you'll need to set 
+Follow the emap development [instructions](https://github.com/SAFEHR-data/emap/blob/main/docs/dev/core.md#deploying-a-live-version "Instructions for deploying a live version of EMAP") configure and deploy a version of EMAP. To run a local version you'll need to set
 
 ```
   fake_uds:
-    enable_fake_uds: true 
+    enable_fake_uds: true
   uds:
-    UDS_JDBC_URL: jdbc:postgresql://fakeuds:5432/fakeuds 
+    UDS_JDBC_URL: jdbc:postgresql://fakeuds:5432/fakeuds
 ```
 
 and configure and synthetic waveform generator
 
 ```
-waveform:                                                     
-  enable_waveform: true                                       
-  enable_waveform_generator: true                             
-  CORE_WAVEFORM_RETENTION_HOURS: 24                           
+waveform:
+  enable_waveform: true
+  enable_waveform_generator: true
+  CORE_WAVEFORM_RETENTION_HOURS: 24
   WAVEFORM_HL7_SOURCE_ADDRESS_ALLOW_LIST: ALL
-  WAVEFORM_HL7_TEST_DUMP_FILE: ""                             
+  WAVEFORM_HL7_TEST_DUMP_FILE: ""
   WAVEFORM_HL7_SAVE_DIRECTORY: "/waveform-saved-messages"
-  WAVEFORM_SYNTHETIC_NUM_PATIENTS: 2                          
-  WAVEFORM_SYNTHETIC_WARP_FACTOR:1                           
-  WAVEFORM_SYNTHETIC_START_DATETIME: "2024-01-02T12:00:00Z"   
-  WAVEFORM_SYNTHETIC_END_DATETIME: "2024-01-03T12:00:00Z"    
+  WAVEFORM_SYNTHETIC_NUM_PATIENTS: 2
+  WAVEFORM_SYNTHETIC_WARP_FACTOR:1
+  WAVEFORM_SYNTHETIC_START_DATETIME: "2024-01-02T12:00:00Z"
+  WAVEFORM_SYNTHETIC_END_DATETIME: "2024-01-03T12:00:00Z"
 ```
 
-Once configured you can start it with 
+Once configured you can start it with
 
 ```
 emap docker up -d
@@ -35,11 +35,18 @@ emap docker up -d
 
 ## 2 Install and deploy waveform controller using docker
 
-Configuration, copy the configuration file to the config directory and edit 
+Configuration, copy the configuration file to the config directory and edit
 as necessary.
 
 ```
 cp settings.env.EXAMPLE config/settings.env
+```
+If it doesn't already exist you should create a directory named
+`waveform-export` in the parent directory to store the saved waveform
+messages.
+
+```
+mkdir ../waveform-export
 ```
 
 Build and start the controller with docker
@@ -51,8 +58,8 @@ docker compose up -d
 
 ## 3 Check if it's working
 
-Running the controller will create a `waveform_data` directory where waveform messages
-matched to Contact Serial Number (CSN) will be saved as csv files, each containing data for
+Running the controller will save (to `../waveform-export`) waveform messages
+matched to Contact Serial Number (CSN) as csv files, each containing data for
 one calender day, as
 `YYYY-MM-DD.CSN.sourceName.units.csv`
 
