@@ -36,7 +36,7 @@ emap docker up -d
 ## 2 Install and deploy waveform controller using docker
 
 Configuration, copy the configuration file to the config directory and edit
-as necessary.
+as necessary. Remove the comment telling you not to put secrets in it.
 
 ```
 cp settings.env.EXAMPLE config/settings.env
