@@ -2,9 +2,21 @@ import psycopg2
 from psycopg2 import sql
 import json
 from datetime import datetime, timedelta
+import functools
 
 import waveform_controller.settings as settings
 import waveform_controller.csv_writer as writer
+
+
+def ack_message(ch, delivery_tag):
+    """Note that `ch` must be the same pika channel instance via which the
+    message being ACKed was retrieved (AMQP protocol constraint)."""
+    if ch.is_open:
+        ch.basic_ack(delivery_tag)
+    else:
+        # Channel is already closed, so we can't ACK this message;
+        # log and/or do something that makes sense for your app in this case.
+        pass
 
 
 class starDB:
@@ -42,7 +54,7 @@ class starDB:
 
         return single_row
 
-    def waveform_callback(self, ch, method, properties, body):
+    def waveform_callback(self, ch, delivery_tag, body):
         data = json.loads(body)
         location_string = data.get("mappedLocationString", "unknown")
         observation_time = data.get("observationTime", "NaT")
@@ -54,6 +66,6 @@ class starDB:
         obs_time_str = observation_time.strftime("%Y-%m-%d:%H:%M:%S")
         start_time_str = start_time.strftime("%Y-%m-%d:%H:%M:%S")
         matched_mrn = self.get_row(location_string, start_time_str, obs_time_str)
-
         if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
-            ch.basic_ack(method.delivery_tag)
+            cb = functools.partial(ack_message, ch, delivery_tag)
+            ch.connection.add_callback_threadsafe(cb)
