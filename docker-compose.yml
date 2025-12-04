@@ -1,0 +1,15 @@
+services:
+  waveform-controller:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY}
+        http_proxy: ${http_proxy}
+        HTTPS_PROXY: ${HTTPS_PROXY}
+        https_proxy: ${https_proxy}
+    # ideally we'd use docker secrets but it's not enabled currently
+    env_file:
+     - ./config/settings.env
+    volumes:
+      - ../waveform-export:/app/waveform-export
