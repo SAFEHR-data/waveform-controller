@@ -27,7 +27,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
         raise ValueError("waveform_message is missing observationTime")
 
     observation_datetime = datetime.fromtimestamp(observationTime)
-    units = waveform_message.get("unit", "None")
+    units = waveform_message.get("unit", "")
 
     out_path = "waveform-export/"
     Path(out_path).mkdir(exist_ok=True)
@@ -37,14 +37,18 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     )
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
+        waveform_data = waveform_message.get("numericValues", "")
+        if waveform_data != "":
+            waveform_data = waveform_data.get("value", "")
+
         wv_writer.writerow(
             [
                 csn,
                 mrn,
                 units,
-                waveform_message.get("samplingRate", "None"),
+                waveform_message.get("samplingRate", ""),
                 observationTime,
-                waveform_message.get("numericValues", "NaN").get("value", "NaN"),
+                waveform_data,
             ]
         )
 
