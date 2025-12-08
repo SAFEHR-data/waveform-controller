@@ -20,7 +20,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
 
     :return: True if write was successful.
     """
-    sourceSystem = waveform_message.get("sourceStreamId", None)
+    sourceStreamId = waveform_message.get("sourceStreamId", None)
     observationTime = waveform_message.get("observationTime", False)
 
     if not observationTime:
@@ -33,7 +33,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     Path(out_path).mkdir(exist_ok=True)
 
     filename = out_path + create_file_name(
-        sourceSystem, observation_datetime, csn, units
+        sourceStreamId, observation_datetime, csn, units
     )
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
@@ -45,6 +45,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
             [
                 csn,
                 mrn,
+                sourceStreamId,
                 units,
                 waveform_message.get("samplingRate", ""),
                 observationTime,
