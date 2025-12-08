@@ -14,5 +14,6 @@ INNER JOIN {schema_name}.location_visit lv
 INNER JOIN {schema_name}.location loc
   ON lv.location_id = loc.location_id
 WHERE loc.location_string = %(location_string)s
-  AND hv.valid_from BETWEEN %(start_datetime)s AND %(end_datetime)s
-ORDER by hv.valid_from DESC
+  AND lv.admission_datetime BETWEEN %(start_datetime)s AND %(end_datetime)s
+ORDER by lv.admission_datetime DESC
+LIMIT 1
