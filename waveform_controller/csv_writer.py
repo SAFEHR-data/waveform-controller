@@ -20,7 +20,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
 
     :return: True if write was successful.
     """
-    sourceSystem = waveform_message.get("sourceSystem", None)
+    sourceSystem = waveform_message.get("sourceStreamId", None)
     observationTime = waveform_message.get("observationTime", False)
 
     if not observationTime:
