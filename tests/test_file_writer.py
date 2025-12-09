@@ -8,6 +8,7 @@ from datetime import datetime, timezone
     [
         ("uV", "2025-01-01.12345678.11.uV.csv"),
         ("mL/s", "2025-01-01.12345678.11.mLps.csv"),
+        ("%", "2025-01-01.12345678.11.percent.csv"),
     ],
 )
 def test_create_file_name_handles_units(units, expected_filename, tmp_path):

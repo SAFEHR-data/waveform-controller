@@ -12,6 +12,7 @@ def create_file_name(
     (csn) the date, and the source system."""
     datestring = observationTime.strftime("%Y-%m-%d")
     units = units.replace("/", "p")
+    units = units.replace("%", "percent")
     return f"{datestring}.{csn}.{sourceSystem}.{units}.csv"
 
 
