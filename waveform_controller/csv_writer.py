@@ -11,6 +11,7 @@ def create_file_name(
     """Create a unique file name based on the patient contact serial number
     (csn) the date, and the source system."""
     datestring = observationTime.strftime("%Y-%m-%d")
+    units = units.replace("/", "p")
     return f"{datestring}.{csn}.{sourceSystem}.{units}.csv"
 
 

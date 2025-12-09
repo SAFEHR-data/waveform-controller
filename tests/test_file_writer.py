@@ -7,7 +7,7 @@ from datetime import datetime, timezone
     "units, expected_filename",
     [
         ("uV", "2025-01-01.12345678.11.uV.csv"),
-        ("mL/s", "2025-01-01.12345678.11.mL/s.csv"),
+        ("mL/s", "2025-01-01.12345678.11.mLps.csv"),
     ],
 )
 def test_create_file_name_handles_units(units, expected_filename, tmp_path):
