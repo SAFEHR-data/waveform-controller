@@ -13,3 +13,4 @@ dependencies = [
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"
+emap-send-ftps = "exporter.ftps:do_upload"
