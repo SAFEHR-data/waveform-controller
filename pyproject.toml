@@ -11,4 +11,4 @@ dependencies = [
 ]
 
 [project.scripts]
-emap-extract-waveform = "waveform_controller.controller:receiver"
+emap-extract-waveform = "controller:receiver"

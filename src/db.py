@@ -1,11 +1,15 @@
 import psycopg2
-from psycopg2 import sql
+from psycopg2 import sql, pool
 import json
 from datetime import datetime, timedelta
 import functools
+import logging
 
-import waveform_controller.settings as settings
-import waveform_controller.csv_writer as writer
+import settings as settings
+import csv_writer as writer
+
+logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 
 def ack_message(ch, delivery_tag):
@@ -14,9 +18,14 @@ def ack_message(ch, delivery_tag):
     if ch.is_open:
         ch.basic_ack(delivery_tag)
     else:
-        # Channel is already closed, so we can't ACK this message;
-        # log and/or do something that makes sense for your app in this case.
-        pass
+        logger.warning("Attempting to acknowledge a message on a closed channel.")
+
+
+def nack_message(ch, delivery_tag):
+    if ch.is_open:
+        ch.basic_nack(delivery_tag)
+    else:
+        logger.warning("Attempting to not acknowledge a message on a closed channel.")
 
 
 class starDB:
@@ -28,11 +37,13 @@ class starDB:
         settings.UDS_HOST,  # type:ignore
         settings.UDS_PORT,  # type:ignore
     )
+    connection_pool: pool.ThreadedConnectionPool
+
+    def create_connection_pool(self):
+        self.connection_pool = pool.ThreadedConnectionPool(2, 5, self.connection_string)
 
     def init_query(self):
-        with open(
-            "waveform_controller/sql/mrn_based_on_bed_and_datetime.sql", "r"
-        ) as file:
+        with open("src/sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
             self.sql_query = sql.SQL(file.read())
         self.sql_query = self.sql_query.format(
             schema_name=sql.Identifier(settings.SCHEMA_NAME)
@@ -45,11 +56,14 @@ class starDB:
             "end_datetime": end_datetime,
         }
         try:
-            with psycopg2.connect(self.connection_string) as db_connection:
-                with db_connection.cursor() as curs:
-                    curs.execute(self.sql_query, parameters)
-                    single_row = curs.fetchone()
+            db_connection = self.connection_pool.getconn()
+            with db_connection.cursor() as curs:
+                curs.execute(self.sql_query, parameters)
+                single_row = curs.fetchone()
+            self.connection_pool.putconn(db_connection)
         except psycopg2.errors.UndefinedTable:
+            logger.error("Failed to find required tables in database.")
+            self.connection_pool.putconn(db_connection)
             raise ConnectionError("There is no table in your data base")
 
         return single_row
@@ -65,7 +79,13 @@ class starDB:
         start_time = observation_time - timedelta(weeks=52)
         obs_time_str = observation_time.strftime("%Y-%m-%d:%H:%M:%S")
         start_time_str = start_time.strftime("%Y-%m-%d:%H:%M:%S")
-        matched_mrn = self.get_row(location_string, start_time_str, obs_time_str)
+        try:
+            matched_mrn = self.get_row(location_string, start_time_str, obs_time_str)
+        except ConnectionError:
+            cb = functools.partial(nack_message, ch, delivery_tag)
+            ch.connection.add_callback_threadsafe(cb)
+            return
+
         if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
             cb = functools.partial(ack_message, ch, delivery_tag)
             ch.connection.add_callback_threadsafe(cb)

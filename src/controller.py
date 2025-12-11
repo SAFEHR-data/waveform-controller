@@ -6,11 +6,12 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 import functools
 import threading
 import pika
-import waveform_controller.db as db
-import waveform_controller.settings as settings
+import db as db
+import settings as settings
 
 emap_db = db.starDB()
 emap_db.init_query()
+emap_db.create_connection_pool()
 
 
 def on_message(ch, method_frame, _header_frame, body, args):
