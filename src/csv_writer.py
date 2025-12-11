@@ -49,6 +49,7 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
                 units,
                 waveform_message.get("samplingRate", ""),
                 observationTime,
+                waveform_message.get("mappedLocationString", ""),
                 waveform_data,
             ]
         )

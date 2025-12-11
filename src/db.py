@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import functools
 import logging
 
-import settings as settings
-import csv_writer as writer
+import settings as settings  # type:ignore
+import csv_writer as writer  # type:ignore
 
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)

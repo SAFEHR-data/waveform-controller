@@ -23,7 +23,7 @@ repos:
             "types-psycopg2",
             "types-pika"
           ]
-        files: waveform_controller/
+        files: src/
   # ----------
   # Formats docstrings to comply with PEP257
   - repo: https://github.com/PyCQA/docformatter

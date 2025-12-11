@@ -6,8 +6,8 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 import functools
 import threading
 import pika
-import db as db
-import settings as settings
+import db as db  # type:ignore
+import settings as settings  # type:ignore
 
 emap_db = db.starDB()
 emap_db.init_query()
