@@ -68,5 +68,15 @@ Each row of the csv will contain
 
 `csn, mrn, units, samplingRate, observationTime, waveformData`
 
+## Perform an export
+
+Exported files must be under the WAVEFORM_PSEUDONYMISED directory.
+Files passed in must be given relative to this directory:
+```
+docker compose run waveform-controller emap-send-ftps my_pseudonymised_file.parquet
+```
+
+In future, this will be run on a schedule.
+
 # Developing
 See [developing docs](docs/develop.md)
