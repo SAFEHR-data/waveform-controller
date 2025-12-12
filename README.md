@@ -39,7 +39,8 @@ Configuration, copy the configuration file to the config directory and edit
 as necessary. Remove the comment telling you not to put secrets in it.
 
 ```
-cp settings.env.EXAMPLE config/settings.env
+mkdir ../config
+cp settings.env.EXAMPLE ../config/settings.env
 ```
 If it doesn't already exist you should create a directory named
 `waveform-export` in the parent directory to store the saved waveform
