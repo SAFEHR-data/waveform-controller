@@ -2,6 +2,7 @@
 
 import csv
 from datetime import datetime
+from locations import WAVEFORM_ORIGINAL_CSV
 from pathlib import Path
 
 
@@ -31,10 +32,9 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     observation_datetime = datetime.fromtimestamp(observationTime)
     units = waveform_message.get("unit", "")
 
-    out_path = "waveform-export/"
-    Path(out_path).mkdir(exist_ok=True)
+    WAVEFORM_ORIGINAL_CSV.mkdir(exist_ok=True, parents=False)
 
-    filename = out_path + create_file_name(
+    filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
         sourceStreamId, observation_datetime, csn, units
     )
     with open(filename, "a") as fileout:

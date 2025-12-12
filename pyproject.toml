@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "pandas",
+    #"pyarrow>=22.0",
     "pika>=1.3.2",
     "pre-commit>=4.5.0",
     # need to be compatible with PIXL, which currently pins 2.9.10 (arguably it shouldn't)
@@ -16,4 +18,5 @@ dependencies = [
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"
+emap-csv-pseudon = "pseudon.pseudon:main"
 emap-send-ftps = "exporter.ftps:do_upload"
