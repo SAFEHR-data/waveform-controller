@@ -5,9 +5,13 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 
 import functools
 import threading
+import logging
 import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
+
+logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 emap_db = db.starDB()
 emap_db.init_query()
@@ -20,7 +24,15 @@ def on_message(ch, method_frame, _header_frame, body, args):
     t = threading.Thread(
         target=emap_db.waveform_callback, args=(ch, delivery_tag, body)
     )
-    t.start()
+    try:
+        t.start()
+    except RuntimeError as e:
+        db.nack_message(ch, delivery_tag)
+        logger.error(
+            f"Failed to start thread, got {e}. nb. There are {len(thrds)} active threads."
+        )
+        return
+
     thrds.append(t)
 
 
