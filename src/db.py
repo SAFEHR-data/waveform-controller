@@ -58,34 +58,15 @@ class starDB:
         try:
             db_connection = self.connection_pool.getconn()
             with db_connection.cursor() as curs:
+                logger.error("I get data")
                 curs.execute(self.sql_query, parameters)
+                logger.error("I got data")
                 single_row = curs.fetchone()
             self.connection_pool.putconn(db_connection)
         except psycopg2.errors.UndefinedTable:
+            return ("null", "null", "null")
             logger.error("Failed to find required tables in database.")
             self.connection_pool.putconn(db_connection)
             raise ConnectionError("There is no table in your data base")
 
         return single_row
-
-    def waveform_callback(self, ch, delivery_tag, body):
-        data = json.loads(body)
-        location_string = data.get("mappedLocationString", "unknown")
-        observation_time = data.get("observationTime", "NaT")
-        observation_time = datetime.fromtimestamp(observation_time)
-        # I found in testing that to find the first patient I had to go back 7 months. I'm not sure this
-        # is expected, but I suppose an ICU patient could occupy a bed for a long time. Let's use
-        # 52 weeks for now.
-        start_time = observation_time - timedelta(weeks=52)
-        obs_time_str = observation_time.strftime("%Y-%m-%d:%H:%M:%S")
-        start_time_str = start_time.strftime("%Y-%m-%d:%H:%M:%S")
-        try:
-            matched_mrn = self.get_row(location_string, start_time_str, obs_time_str)
-        except ConnectionError:
-            cb = functools.partial(nack_message, ch, delivery_tag)
-            ch.connection.add_callback_threadsafe(cb)
-            return
-
-        if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
-            cb = functools.partial(ack_message, ch, delivery_tag)
-            ch.connection.add_callback_threadsafe(cb)
