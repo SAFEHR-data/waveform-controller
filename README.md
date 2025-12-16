@@ -40,7 +40,9 @@ as necessary. Remove the comment telling you not to put secrets in it.
 
 ```
 mkdir ../config
-cp settings.env.EXAMPLE ../config/settings.env
+cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
+cp config.EXAMPLE/exporter.env.EXAMPLE ../config/settings.env
+cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
 ```
 If it doesn't already exist you should create a directory named
 `waveform-export` in the parent directory to store the saved waveform
