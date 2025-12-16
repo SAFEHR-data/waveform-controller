@@ -53,8 +53,16 @@ def waveform_callback():
         message = worker_queue.get()
         if message is not None:
             data = json.loads(message.body)
-            location_string = data.get("mappedLocationString", "unknown")
-            observation_time = data.get("observationTime", "NaT")
+            try:
+                location_string = data["mappedLocationString"]
+                observation_time = data["observationTime"]
+            except IndexError as e:
+                cb = functools.partial(nack_message, message.ch, message.delivery_tag)
+                message.ch.connection.add_callback_threadsafe(cb)
+                logger.error(f"Waveform message is missing required data {e}")
+                worker_queue.task_done()
+                continue
+
             observation_time = datetime.fromtimestamp(observation_time)
             try:
                 matched_mrn = emap_db.get_row(location_string, observation_time)
