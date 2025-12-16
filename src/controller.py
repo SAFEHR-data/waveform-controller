@@ -3,7 +3,6 @@ A script to receive messages in the waveform queue and write them to stdout,
 based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 """
 
-import functools
 import json
 from datetime import datetime
 import threading
@@ -38,9 +37,9 @@ def ack_message(ch, delivery_tag):
         logger.warning("Attempting to acknowledge a message on a closed channel.")
 
 
-def nack_message(ch, delivery_tag, requeue):
+def reject_message(ch, delivery_tag, requeue):
     if ch.is_open:
-        ch.basic_nack(delivery_tag, requeue)
+        ch.basic_reject(delivery_tag, requeue)
     else:
         logger.warning("Attempting to not acknowledge a message on a closed channel.")
 
@@ -57,11 +56,10 @@ def waveform_callback():
                 location_string = data["mappedLocationString"]
                 observation_time = data["observationTime"]
             except IndexError as e:
-                cb = functools.partial(
-                    nack_message, message.ch, message.delivery_tag, True
+                reject_message(message.ch, message.delivery_tag, False)
+                logger.error(
+                    f"Waveform message {message.delivery_tag} is missing required data {e}."
                 )
-                message.ch.connection.add_callback_threadsafe(cb)
-                logger.error(f"Waveform message is missing required data {e}")
                 worker_queue.task_done()
                 continue
 
@@ -69,16 +67,12 @@ def waveform_callback():
             try:
                 matched_mrn = emap_db.get_row(location_string, observation_time)
             except ValueError as e:
-                cb = functools.partial(
-                    nack_message, message.ch, message.delivery_tag, False
-                )
-                message.ch.connection.add_callback_threadsafe(cb)
+                reject_message(message.ch, message.delivery_tag, False)
                 logger.error(f"Ambiguous or non existent match: {e}")
                 matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
 
             if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
-                cb = functools.partial(ack_message, message.ch, message.delivery_tag)
-                message.ch.connection.add_callback_threadsafe(cb)
+                ack_message(message.ch, message.delivery_tag)
 
             worker_queue.task_done()
         else:
