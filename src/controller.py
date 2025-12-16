@@ -38,9 +38,9 @@ def ack_message(ch, delivery_tag):
         logger.warning("Attempting to acknowledge a message on a closed channel.")
 
 
-def nack_message(ch, delivery_tag):
+def nack_message(ch, delivery_tag, requeue):
     if ch.is_open:
-        ch.basic_nack(delivery_tag)
+        ch.basic_nack(delivery_tag, requeue)
     else:
         logger.warning("Attempting to not acknowledge a message on a closed channel.")
 
@@ -57,7 +57,9 @@ def waveform_callback():
                 location_string = data["mappedLocationString"]
                 observation_time = data["observationTime"]
             except IndexError as e:
-                cb = functools.partial(nack_message, message.ch, message.delivery_tag)
+                cb = functools.partial(
+                    nack_message, message.ch, message.delivery_tag, True
+                )
                 message.ch.connection.add_callback_threadsafe(cb)
                 logger.error(f"Waveform message is missing required data {e}")
                 worker_queue.task_done()
@@ -67,11 +69,12 @@ def waveform_callback():
             try:
                 matched_mrn = emap_db.get_row(location_string, observation_time)
             except ValueError as e:
-                cb = functools.partial(nack_message, message.ch, message.delivery_tag)
+                cb = functools.partial(
+                    nack_message, message.ch, message.delivery_tag, False
+                )
                 message.ch.connection.add_callback_threadsafe(cb)
                 logger.error(f"Ambiguous or non existent match: {e}")
-                worker_queue.task_done()
-                continue
+                matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
 
             if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
                 cb = functools.partial(ack_message, message.ch, message.delivery_tag)
