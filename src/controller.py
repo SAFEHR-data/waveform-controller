@@ -5,7 +5,7 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 
 import functools
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import threading
 import queue
 import logging
@@ -56,21 +56,20 @@ def waveform_callback():
             location_string = data.get("mappedLocationString", "unknown")
             observation_time = data.get("observationTime", "NaT")
             observation_time = datetime.fromtimestamp(observation_time)
-            # I found in testing that to find the first patient I had to go back 7 months. I'm not sure this
-            # is expected, but I suppose an ICU patient could occupy a bed for a long time. Let's use
-            # 52 weeks for now.
-            start_time = observation_time - timedelta(weeks=52)
-            obs_time_str = observation_time.strftime("%Y-%m-%d:%H:%M:%S")
-            start_time_str = start_time.strftime("%Y-%m-%d:%H:%M:%S")
             try:
-                matched_mrn = emap_db.get_row(
-                    location_string, start_time_str, obs_time_str
-                )
-            except ConnectionError:
+                matched_mrn = emap_db.get_row(location_string, observation_time)
+            except ConnectionError as e:
                 cb = functools.partial(nack_message, message.ch, message.delivery_tag)
                 message.ch.connection.add_callback_threadsafe(cb)
+                logger.error(f"Failed to find required tables in database: {e}")
                 worker_queue.task_done()
-                break
+                continue
+            except ValueError as e:
+                cb = functools.partial(nack_message, message.ch, message.delivery_tag)
+                message.ch.connection.add_callback_threadsafe(cb)
+                logger.error(f"Ambiguous or non existent match: {e}")
+                worker_queue.task_done()
+                continue
 
             if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
                 cb = functools.partial(ack_message, message.ch, message.delivery_tag)

@@ -1,3 +1,4 @@
+from datetime import datetime
 import psycopg2
 from psycopg2 import sql, pool
 import logging
@@ -29,20 +30,22 @@ class starDB:
             schema_name=sql.Identifier(settings.SCHEMA_NAME)
         )
 
-    def get_row(self, location_string: str, start_datetime: str, end_datetime: str):
+    def get_row(self, location_string: str, observation_datetime: datetime):
         parameters = {
             "location_string": location_string,
-            "start_datetime": start_datetime,
-            "end_datetime": end_datetime,
+            "observation_datetime": observation_datetime,
         }
         try:
             with self.connection_pool.getconn() as db_connection:
                 with db_connection.cursor() as curs:
                     curs.execute(self.sql_query, parameters)
-                    single_row = curs.fetchone()
+                    rows = curs.fetchall()
+                    if len(rows) != 1:
+                        raise ValueError(
+                            f"Wrong number of rows returned from database. {len(rows)} != 1, for {location_string}:{observation_datetime}"
+                        )
         except psycopg2.errors.UndefinedTable as e:
             self.connection_pool.putconn(db_connection)
-            logger.error(f"Failed to find required tables in database: {e}")
-            raise ConnectionError("Missing tables in database.")
+            raise ConnectionError(f"Missing tables in database: {e}")
 
-        return single_row
+        return rows
