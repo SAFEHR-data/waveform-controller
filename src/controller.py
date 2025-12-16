@@ -5,20 +5,19 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 
 import json
 from datetime import datetime
-import threading
-import queue
 import logging
 import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
 
-max_threads = 1  # this needs to stay at 1 as pika is not thread safe.
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
-worker_queue: queue.Queue = queue.Queue(maxsize=max_threads)
+emap_db = db.starDB()
+emap_db.init_query()
+emap_db.connect()
 
 
 class waveform_message:
@@ -44,52 +43,32 @@ def reject_message(ch, delivery_tag, requeue):
         logger.warning("Attempting to not acknowledge a message on a closed channel.")
 
 
-def waveform_callback():
-    emap_db = db.starDB()
-    emap_db.init_query()
-    emap_db.connect()
-    while True:
-        message = worker_queue.get()
-        if message is not None:
-            data = json.loads(message.body)
-            try:
-                location_string = data["mappedLocationString"]
-                observation_time = data["observationTime"]
-            except IndexError as e:
-                reject_message(message.ch, message.delivery_tag, False)
-                logger.error(
-                    f"Waveform message {message.delivery_tag} is missing required data {e}."
-                )
-                worker_queue.task_done()
-                continue
+def waveform_callback(ch, method_frame, _header_frame, body):
+    data = json.loads(body)
+    try:
+        location_string = data["mappedLocationString"]
+        observation_time = data["observationTime"]
+    except IndexError as e:
+        reject_message(ch, method_frame.delivery_tag, False)
+        logger.error(
+            f"Waveform message {method_frame.delivery_tag} is missing required data {e}."
+        )
+        return
 
-            observation_time = datetime.fromtimestamp(observation_time)
-            lookup_success = True
-            try:
-                matched_mrn = emap_db.get_row(location_string, observation_time)
-            except ValueError as e:
-                lookup_success = False
-                logger.error(f"Ambiguous or non existent match: {e}")
-                matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
+    observation_time = datetime.fromtimestamp(observation_time)
+    lookup_success = True
+    try:
+        matched_mrn = emap_db.get_row(location_string, observation_time)
+    except ValueError as e:
+        lookup_success = False
+        logger.error(f"Ambiguous or non existent match: {e}")
+        matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
 
-            if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
-                if lookup_success:
-                    ack_message(message.ch, message.delivery_tag)
-                else:
-                    reject_message(message.ch, message.delivery_tag, False)
-
-            worker_queue.task_done()
+    if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
+        if lookup_success:
+            ack_message(ch, method_frame.delivery_tag)
         else:
-            logger.warning("No message in queue.")
-
-
-def on_message(ch, method_frame, _header_frame, body):
-    wf_message = waveform_message(ch, method_frame.delivery_tag, body)
-    if not worker_queue.full():
-        worker_queue.put(wf_message)
-    else:
-        logger.warning("Working queue is full.")
-        reject_message(ch, method_frame.delivery_tag, True)
+            reject_message(ch, method_frame.delivery_tag, False)
 
 
 def receiver():
@@ -106,24 +85,14 @@ def receiver():
     channel = connection.channel()
     channel.basic_qos(prefetch_count=1)
 
-    threads = []
-    # I just want on thread, but in theory this should work for more
-    worker_thread = threading.Thread(target=waveform_callback)
-    worker_thread.start()
-    threads.append(worker_thread)
-
     channel.basic_consume(
         queue=settings.RABBITMQ_QUEUE,
         auto_ack=False,
-        on_message_callback=on_message,
+        on_message_callback=waveform_callback,
     )
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
         channel.stop_consuming()
-
-    # Wait for all to complete
-    for thread in threads:
-        thread.join()
 
     connection.close()
