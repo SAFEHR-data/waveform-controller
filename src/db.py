@@ -50,4 +50,4 @@ class starDB:
                 f"Wrong number of rows returned from database. {len(rows)} != 1, for {location_string}:{observation_datetime}"
             )
 
-        return rows
+        return rows[0]
