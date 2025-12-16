@@ -8,8 +8,10 @@ dependencies = [
     "pika>=1.3.2",
     "pre-commit>=4.5.0",
     "psycopg2-binary>=2.9.11",
-    "pytest>=9.0.2",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0.2"]
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"
