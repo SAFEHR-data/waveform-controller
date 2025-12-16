@@ -40,6 +40,7 @@ class starDB:
                 with db_connection.cursor() as curs:
                     curs.execute(self.sql_query, parameters)
                     rows = curs.fetchall()
+                self.connection_pool.putconn(db_connection)
         except psycopg2.errors.UndefinedTable as e:
             self.connection_pool.putconn(db_connection)
             raise ConnectionError(f"Missing tables in database: {e}")
