@@ -66,12 +66,6 @@ def waveform_callback():
             observation_time = datetime.fromtimestamp(observation_time)
             try:
                 matched_mrn = emap_db.get_row(location_string, observation_time)
-            except ConnectionError as e:
-                cb = functools.partial(nack_message, message.ch, message.delivery_tag)
-                message.ch.connection.add_callback_threadsafe(cb)
-                logger.error(f"Failed to find required tables in database: {e}")
-                worker_queue.task_done()
-                continue
             except ValueError as e:
                 cb = functools.partial(nack_message, message.ch, message.delivery_tag)
                 message.ch.connection.add_callback_threadsafe(cb)
