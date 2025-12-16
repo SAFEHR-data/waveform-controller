@@ -40,12 +40,13 @@ class starDB:
                 with db_connection.cursor() as curs:
                     curs.execute(self.sql_query, parameters)
                     rows = curs.fetchall()
-                    if len(rows) != 1:
-                        raise ValueError(
-                            f"Wrong number of rows returned from database. {len(rows)} != 1, for {location_string}:{observation_datetime}"
-                        )
         except psycopg2.errors.UndefinedTable as e:
             self.connection_pool.putconn(db_connection)
             raise ConnectionError(f"Missing tables in database: {e}")
+
+        if len(rows) != 1:
+            raise ValueError(
+                f"Wrong number of rows returned from database. {len(rows)} != 1, for {location_string}:{observation_datetime}"
+            )
 
         return rows
