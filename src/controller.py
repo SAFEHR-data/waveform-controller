@@ -13,7 +13,7 @@ import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
 
-max_threads = 1
+max_threads = 1  # this needs to stay at 1 as pika is not thread safe.
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -64,15 +64,19 @@ def waveform_callback():
                 continue
 
             observation_time = datetime.fromtimestamp(observation_time)
+            lookup_success = True
             try:
                 matched_mrn = emap_db.get_row(location_string, observation_time)
             except ValueError as e:
-                reject_message(message.ch, message.delivery_tag, False)
+                lookup_success = False
                 logger.error(f"Ambiguous or non existent match: {e}")
                 matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
 
             if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
-                ack_message(message.ch, message.delivery_tag)
+                if lookup_success:
+                    ack_message(message.ch, message.delivery_tag)
+                else:
+                    reject_message(message.ch, message.delivery_tag, False)
 
             worker_queue.task_done()
         else:
@@ -85,6 +89,7 @@ def on_message(ch, method_frame, _header_frame, body):
         worker_queue.put(wf_message)
     else:
         logger.warning("Working queue is full.")
+        reject_message(ch, method_frame.delivery_tag, True)
 
 
 def receiver():
