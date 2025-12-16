@@ -19,15 +19,8 @@ class starDB:
     )
     connection_pool: pool.ThreadedConnectionPool
 
-    def create_connection_pool(self, max_connections):
-        # connection pool may not be necessary, but use a simplepool as this process
-        # will be single threaded.
-        self.connection_pool = pool.SimpleConnectionPool(
-            1, max_connections, self.connection_string
-        )
-
     def connect(self):
-        self.db_connection = psycopg2.connect(self.connection_string)
+        self.connection_pool = pool.ThreadedConnectionPool(1, 1, self.connection_string)
 
     def init_query(self):
         with open("src/sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
@@ -47,9 +40,9 @@ class starDB:
                 with db_connection.cursor() as curs:
                     curs.execute(self.sql_query, parameters)
                     single_row = curs.fetchone()
-        except psycopg2.errors.UndefinedTable:
+        except psycopg2.errors.UndefinedTable as e:
             self.connection_pool.putconn(db_connection)
-            logger.error("Failed to find required tables in database.")
-            raise ConnectionError("There is no table in your data base")
+            logger.error(f"Failed to find required tables in database: {e}")
+            raise ConnectionError("Missing tables in database.")
 
         return single_row

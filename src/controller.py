@@ -49,7 +49,6 @@ def waveform_callback():
     emap_db = db.starDB()
     emap_db.init_query()
     emap_db.connect()
-    emap_db.create_connection_pool(5)
     while True:
         message = worker_queue.get()
         if message is not None:
@@ -70,6 +69,7 @@ def waveform_callback():
             except ConnectionError:
                 cb = functools.partial(nack_message, message.ch, message.delivery_tag)
                 message.ch.connection.add_callback_threadsafe(cb)
+                worker_queue.task_done()
                 break
 
             if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
