@@ -55,7 +55,7 @@ def waveform_callback(ch, method_frame, _header_frame, body):
         )
         return
 
-    observation_time = datetime.fromtimestamp(observation_time)
+    observation_time = datetime.fromtimestamp(observation_time, tz=timezone.utc)
     lookup_success = True
     try:
         matched_mrn = emap_db.get_row(location_string, observation_time)
