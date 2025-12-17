@@ -12,11 +12,11 @@ from datetime import datetime, timezone
     ],
 )
 def test_create_file_name_handles_units(units, expected_filename, tmp_path):
-    sourceSystem = "11"
+    sourceStreamId = "11"
     observationTime = datetime(2025, 1, 1, tzinfo=timezone.utc)
     csn = "12345678"
 
-    filename = create_file_name(sourceSystem, observationTime, csn, units)
+    filename = create_file_name(sourceStreamId, observationTime, csn, units)
 
     assert filename == expected_filename
 
