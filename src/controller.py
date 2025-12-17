@@ -63,6 +63,10 @@ def waveform_callback(ch, method_frame, _header_frame, body):
         lookup_success = False
         logger.error(f"Ambiguous or non existent match: {e}")
         matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
+    except ConnectionError as e:
+        logger.error(f"Database error, will try again: {e}")
+        reject_message(ch, method_frame.delivery_tag, True)
+        return
 
     if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
         if lookup_success:
