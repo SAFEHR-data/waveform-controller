@@ -5,7 +5,9 @@ def get_from_env(env_var, *, default_value=None, setting_name=None):
     if setting_name is None:
         setting_name = env_var
     value_from_env = os.environ.get(env_var)
-    globals()[setting_name] = value_from_env if value_from_env is not None else default_value
+    globals()[setting_name] = (
+        value_from_env if value_from_env is not None else default_value
+    )
 
 
 # read env vars into settings variables
