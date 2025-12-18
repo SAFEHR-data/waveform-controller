@@ -25,13 +25,11 @@ def csv_to_parquets(csv_path: Path):
 
     WAVEFORM_ORIGINAL_PARQUET.mkdir(parents=False, exist_ok=True)
     WAVEFORM_PSEUDONYMISED_PARQUET.mkdir(parents=False, exist_ok=True)
-    # Read the CSV with two string columns and one array numeric column
-    # Assume col1, col2 are strings, col3 is array of numbers in string format, e.g. "[1,2,3]"
     df = pd.read_csv(str(csv_path),
                      dtype={'csn': str, 'mrn': str, 'source_stream_id': str, 'units': str,
                             'sampling_rate': int,
                             'timestamp': float, 'location': str, 'values': str},
-                     header=0  # Explicitly specify that the first line is always the header
+                     header=0  # the first line is always the header
                      )
 
     def parse_array(x):
@@ -71,7 +69,7 @@ def csv_to_parquets(csv_path: Path):
     df = pseudonymise_relevant_columns(df)
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
-    # XXX: The file path itself contains an identifier (the CSN). Need to fix.
+    # XXX: The file path itself contains an identifier (the CSN). See issue #26.
     pseudon_parquet_path = WAVEFORM_PSEUDONYMISED_PARQUET / (csv_path.stem + '.parquet')
     pq.write_table(
         pseudon_table,
