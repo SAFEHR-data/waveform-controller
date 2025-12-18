@@ -28,8 +28,8 @@ def csv_to_parquets(csv_path: Path):
     # Read the CSV with two string columns and one array numeric column
     # Assume col1, col2 are strings, col3 is array of numbers in string format, e.g. "[1,2,3]"
     df = pd.read_csv(str(csv_path),
-                     dtype={'csn': str, 'mrn': str, 'sourceStreamId': str, 'units': str,
-                            'samplingRate': int,
+                     dtype={'csn': str, 'mrn': str, 'source_stream_id': str, 'units': str,
+                            'sampling_rate': int,
                             'timestamp': float, 'location': str, 'values': str},
                      header=0  # Explicitly specify that the first line is always the header
                      )
@@ -45,9 +45,9 @@ def csv_to_parquets(csv_path: Path):
     schema = pa.schema([
         ('csn', pa.string()),
         ('mrn', pa.string()),
-        ('sourceStreamId', pa.string()),
+        ('source_stream_id', pa.string()),
         ('units', pa.string()),
-        ('samplingRate', pa.int32()),
+        ('sampling_rate', pa.int32()),
         ('timestamp', pa.float64()),
         ('location', pa.string()),
         # decimal32 can have a maximum of 9 significant digits.

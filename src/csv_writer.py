@@ -43,7 +43,7 @@ def write_frame(
     # write header if is new file
     if not filename.exists():
         with open(filename, "w") as fileout:
-            fileout.write("csn,mrn,sourceStreamId,units,samplingRate,timestamp,location,values\n")
+            fileout.write("csn,mrn,source_stream_id,units,sampling_rate,timestamp,location,values\n")
 
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
