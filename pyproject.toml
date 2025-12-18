@@ -22,3 +22,6 @@ dev = ["pytest>=9.0.2"]
 emap-extract-waveform = "controller:receiver"
 emap-csv-pseudon = "pseudon.pseudon:main"
 emap-send-ftps = "exporter.ftps:do_upload"
+
+[tool.mypy]
+ignore_missing_imports = true

@@ -1,10 +1,11 @@
+import argparse
 import logging
 import os
 from pathlib import Path
 
-from core.uploader._ftps import _connect_to_ftp, _create_and_set_as_cwd
 import settings
-import argparse
+from core.uploader._ftps import _connect_to_ftp, _create_and_set_as_cwd
+
 from locations import WAVEFORM_PSEUDONYMISED_PARQUET
 
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
