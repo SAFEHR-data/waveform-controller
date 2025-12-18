@@ -12,5 +12,5 @@ wheels/
 # IDEs
 .idea/
 
-# settings file (should not be in the source tree anyway, but just in case)
-settings.env
+# settings files (should not be in the source tree anyway, but just in case)
+*.env
