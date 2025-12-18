@@ -1,5 +1,6 @@
 #!/bin/bash
 
 # Run by the cron scheduler
-# Exact script TBD...
-emap-send-ftps --help >> /emap.viascript 2>> /emap.viascript2
+# Probably want snakemake instead...
+emap-csv-pseudon --help
+emap-send-ftps --help

@@ -72,7 +72,7 @@ Each row of the csv will contain
 
 ## Perform an export
 
-Exported files must be under the WAVEFORM_PSEUDONYMISED directory.
+Exported files must be under the WAVEFORM_PSEUDONYMISED_PARQUET directory.
 Files passed in must be given relative to this directory:
 ```
 docker compose run waveform-controller emap-send-ftps my_pseudonymised_file.parquet

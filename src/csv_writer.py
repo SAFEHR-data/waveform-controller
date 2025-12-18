@@ -37,6 +37,12 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
     filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
         sourceStreamId, observation_datetime, csn, units
     )
+
+    # write header if is new file
+    if not filename.exists():
+        with open(filename, "w") as fileout:
+            fileout.write("csn,mrn,sourceStreamId,units,samplingRate,timestamp,location,values\n")
+
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
         waveform_data = waveform_message.get("numericValues", "")
