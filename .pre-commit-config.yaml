@@ -10,7 +10,7 @@ repos:
       - id: ruff
         args:
           - --fix
-          - waveform_controller
+          - ./ 
       - id: ruff-format
   # Type-checking python code.
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -23,7 +23,7 @@ repos:
             "types-psycopg2",
             "types-pika"
           ]
-        files: waveform_controller/
+        files: src/
   # ----------
   # Formats docstrings to comply with PEP257
   - repo: https://github.com/PyCQA/docformatter

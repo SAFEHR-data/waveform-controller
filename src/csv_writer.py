@@ -1,0 +1,59 @@
+"""Writes a frame of waveform data to a csv file."""
+
+import csv
+from datetime import datetime
+from pathlib import Path
+
+
+def create_file_name(
+    source_stream_id: str, observation_time: datetime, csn: str, units: str
+) -> str:
+    """Create a unique file name based on the patient contact serial number
+    (csn) the date, and the source system."""
+    datestring = observation_time.strftime("%Y-%m-%d")
+    units = units.replace("/", "p")
+    units = units.replace("%", "percent")
+    return f"{datestring}.{csn}.{source_stream_id}.{units}.csv"
+
+
+def write_frame(
+    waveform_data: dict,
+    source_stream_id: str,
+    observation_timestamp: float,
+    units: str,
+    sampling_rate: int,
+    mapped_location_string: str,
+    csn: str,
+    mrn: str,
+) -> bool:
+    """Appends a frame of waveform data to a csv file (creates file if it
+    doesn't exist.
+
+    :return: True if write was successful.
+    """
+    observation_datetime = datetime.fromtimestamp(observation_timestamp)
+
+    out_path = "waveform-export/"
+    Path(out_path).mkdir(exist_ok=True)
+
+    filename = out_path + create_file_name(
+        source_stream_id, observation_datetime, csn, units
+    )
+    with open(filename, "a") as fileout:
+        wv_writer = csv.writer(fileout, delimiter=",")
+        waveform_data = waveform_data.get("value", "")
+
+        wv_writer.writerow(
+            [
+                csn,
+                mrn,
+                source_stream_id,
+                units,
+                sampling_rate,
+                observation_timestamp,
+                mapped_location_string,
+                waveform_data,
+            ]
+        )
+
+    return True
