@@ -14,7 +14,5 @@ INNER JOIN {schema_name}.location_visit lv
 INNER JOIN {schema_name}.location loc
   ON lv.location_id = loc.location_id
 WHERE loc.location_string = %(location_string)s
-  AND lv.admission_datetime BETWEEN %(start_datetime)s AND %(end_datetime)s
-  AND ( lv.discharge_datetime > %(end_datetime)s OR lv.discharge_datetime is NULL )
-ORDER by lv.admission_datetime DESC
-LIMIT 1
+  AND lv.admission_datetime <= %(observation_datetime)s
+  AND ( lv.discharge_datetime >= %(observation_datetime)s OR lv.discharge_datetime IS NULL )

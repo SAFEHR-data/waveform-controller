@@ -11,10 +11,12 @@ dependencies = [
     "pre-commit>=4.5.0",
     # need to be compatible with PIXL, which currently pins 2.9.10 (arguably it shouldn't)
     "psycopg2-binary>=2.9.10",
-    "pytest>=9.0.2",
-    # trick for making a "relative" path, works inside or outside container image 
+    # trick for making a "relative" path, works inside or outside container image
     "core @ file:///${PROJECT_ROOT}/../PIXL/pixl_core",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0.2"]
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"

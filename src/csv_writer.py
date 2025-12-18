@@ -7,35 +7,37 @@ from pathlib import Path
 
 
 def create_file_name(
-    sourceStreamId: str, observationTime: datetime, csn: str, units: str
+    source_stream_id: str, observation_time: datetime, csn: str, units: str
 ) -> str:
     """Create a unique file name based on the patient contact serial number
     (csn) the date, and the source system."""
-    datestring = observationTime.strftime("%Y-%m-%d")
+    datestring = observation_time.strftime("%Y-%m-%d")
     units = units.replace("/", "p")
     units = units.replace("%", "percent")
-    return f"{datestring}.{csn}.{sourceStreamId}.{units}.csv"
+    return f"{datestring}.{csn}.{source_stream_id}.{units}.csv"
 
 
-def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
+def write_frame(
+    waveform_data: dict,
+    source_stream_id: str,
+    observation_timestamp: float,
+    units: str,
+    sampling_rate: int,
+    mapped_location_string: str,
+    csn: str,
+    mrn: str,
+) -> bool:
     """Appends a frame of waveform data to a csv file (creates file if it
     doesn't exist.
 
     :return: True if write was successful.
     """
-    sourceStreamId = waveform_message.get("sourceStreamId", None)
-    observationTime = waveform_message.get("observationTime", False)
-
-    if not observationTime:
-        raise ValueError("waveform_message is missing observationTime")
-
-    observation_datetime = datetime.fromtimestamp(observationTime)
-    units = waveform_message.get("unit", "")
+    observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
     WAVEFORM_ORIGINAL_CSV.mkdir(exist_ok=True, parents=False)
 
     filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
-        sourceStreamId, observation_datetime, csn, units
+        source_stream_id, observation_datetime, csn, units
     )
 
     # write header if is new file
@@ -45,19 +47,17 @@ def write_frame(waveform_message: dict, csn: str, mrn: str) -> bool:
 
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
-        waveform_data = waveform_message.get("numericValues", "")
-        if waveform_data != "":
-            waveform_data = waveform_data.get("value", "")
+        waveform_data = waveform_data.get("value", "")
 
         wv_writer.writerow(
             [
                 csn,
                 mrn,
-                sourceStreamId,
+                source_stream_id,
                 units,
-                waveform_message.get("samplingRate", ""),
-                observationTime,
-                waveform_message.get("mappedLocationString", ""),
+                sampling_rate,
+                observation_timestamp,
+                mapped_location_string,
                 waveform_data,
             ]
         )
