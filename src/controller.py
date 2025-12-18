@@ -47,7 +47,12 @@ def waveform_callback(ch, method_frame, _header_frame, body):
     data = json.loads(body)
     try:
         location_string = data["mappedLocationString"]
-        observation_time = data["observationTime"]
+        observation_timestamp = data["observationTime"]
+        source_stream_id = data["sourceStreamId"]
+        sampling_rate = data["samplingRate"]
+        units = data["unit"]
+        waveform_data = data["numericValues"]
+        mapped_location_string = data["mappedLocationString"]
     except IndexError as e:
         reject_message(ch, method_frame.delivery_tag, False)
         logger.error(
@@ -55,7 +60,7 @@ def waveform_callback(ch, method_frame, _header_frame, body):
         )
         return
 
-    observation_time = datetime.fromtimestamp(observation_time, tz=timezone.utc)
+    observation_time = datetime.fromtimestamp(observation_timestamp, tz=timezone.utc)
     lookup_success = True
     try:
         matched_mrn = emap_db.get_row(location_string, observation_time)
@@ -68,7 +73,16 @@ def waveform_callback(ch, method_frame, _header_frame, body):
         reject_message(ch, method_frame.delivery_tag, True)
         return
 
-    if writer.write_frame(data, matched_mrn[2], matched_mrn[0]):
+    if writer.write_frame(
+        waveform_data,
+        source_stream_id,
+        observation_timestamp,
+        units,
+        sampling_rate,
+        mapped_location_string,
+        matched_mrn[2],
+        matched_mrn[0],
+    ):
         if lookup_success:
             ack_message(ch, method_frame.delivery_tag)
         else:
