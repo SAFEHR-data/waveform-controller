@@ -4,7 +4,7 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import pika
 import db as db  # type:ignore
