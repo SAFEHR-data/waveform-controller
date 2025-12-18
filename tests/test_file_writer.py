@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 )
 def test_create_file_name_handles_units(units, expected_filename, tmp_path):
     sourceStreamId = "11"
-    observationTime = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    observationTime = datetime(2025, 1, 1, 10, 10, 10, tzinfo=timezone.utc)
     csn = "12345678"
 
     filename = create_file_name(sourceStreamId, observationTime, csn, units)
