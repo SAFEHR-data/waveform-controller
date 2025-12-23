@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# (can't use -u because need to check for potentially unset var)
+set -eo pipefail
+
 # Set up cron schedule according to the environment variable
 if [ -z "$EXPORTER_CRON_SCHEDULE" ]; then
   echo "You must set EXPORTER_CRON_SCHEDULE when running this container"
