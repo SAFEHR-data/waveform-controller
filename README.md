@@ -35,26 +35,42 @@ emap docker up -d
 
 ## 2 Install and deploy waveform controller using docker
 
-Configuration, copy the configuration file to the config directory and edit
-as necessary. Remove the comment telling you not to put secrets in it.
+Create a root directory for your installation of the waveform-controller project,
+separate to the Emap project root.
 
+### Expected top-level dir structure
 ```
-mkdir ../config
-cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
-cp config.EXAMPLE/exporter.env.EXAMPLE ../config/settings.env
-cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
+├── PIXL
+├── config
+├── waveform-controller
+└── waveform-export
 ```
+
+### Instructions for achieving this structure
+
+Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
+both inside your root directory.
+
+Set up the config files as follows:
+```
+mkdir config
+cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
+cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/settings.env
+cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
+```
+From the new config files, remove the comments telling you not to put secrets in it, as instructed.
+
 If it doesn't already exist you should create a directory named
 `waveform-export` in the parent directory to store the saved waveform
 messages.
 
 ```
-mkdir ../waveform-export
+mkdir waveform-export
 ```
 
 Build and start the controller and exporter with docker
 ```
-cd ../waveform-controller
+cd waveform-controller
 docker compose build
 docker compose up -d
 ```
