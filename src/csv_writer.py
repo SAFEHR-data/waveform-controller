@@ -2,7 +2,7 @@
 
 import csv
 from datetime import datetime
-from pathlib import Path
+from locations import WAVEFORM_ORIGINAL_CSV
 
 
 def create_file_name(
@@ -33,12 +33,19 @@ def write_frame(
     """
     observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
-    out_path = "waveform-export/"
-    Path(out_path).mkdir(exist_ok=True)
+    WAVEFORM_ORIGINAL_CSV.mkdir(exist_ok=True, parents=False)
 
-    filename = out_path + create_file_name(
+    filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
         source_stream_id, observation_datetime, csn, units
     )
+
+    # write header if is new file
+    if not filename.exists():
+        with open(filename, "w") as fileout:
+            fileout.write(
+                "csn,mrn,source_stream_id,units,sampling_rate,timestamp,location,values\n"
+            )
+
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
         waveform_data = waveform_data.get("value", "")

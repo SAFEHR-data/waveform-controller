@@ -35,23 +35,42 @@ emap docker up -d
 
 ## 2 Install and deploy waveform controller using docker
 
-Configuration, copy the configuration file to the config directory and edit
-as necessary. Remove the comment telling you not to put secrets in it.
+Create a root directory for your installation of the waveform-controller project,
+separate to the Emap project root.
 
+### Expected top-level dir structure
 ```
-cp settings.env.EXAMPLE config/settings.env
+├── PIXL
+├── config
+├── waveform-controller
+└── waveform-export
 ```
+
+### Instructions for achieving this structure
+
+Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
+both inside your root directory.
+
+Set up the config files as follows:
+```
+mkdir config
+cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
+cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/settings.env
+cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
+```
+From the new config files, remove the comments telling you not to put secrets in it, as instructed.
+
 If it doesn't already exist you should create a directory named
 `waveform-export` in the parent directory to store the saved waveform
 messages.
 
 ```
-mkdir ../waveform-export
+mkdir waveform-export
 ```
 
-Build and start the controller with docker
+Build and start the controller and exporter with docker
 ```
-cd ../waveform-controller
+cd waveform-controller
 docker compose build
 docker compose up -d
 ```
@@ -66,6 +85,23 @@ one calender day, as
 Each row of the csv will contain
 
 `csn, mrn, units, samplingRate, observationTime, waveformData`
+
+## Perform a parquet conversion (including de-id)
+At the time of writing, the cron pipeline is not set up. This section shows
+how to perform an ad-hoc de-id.
+```
+docker compose run waveform-controller emap-csv-pseudon  --csv /waveform-export/original-csv/my_original_csv.csv
+```
+
+## Perform an export
+At the time of writing, the cron pipeline is not set up. This section shows
+how to perform an ad-hoc FTPS upload.
+
+Exported files must be under the WAVEFORM_PSEUDONYMISED_PARQUET directory.
+Files passed in must be given relative to this directory:
+```
+docker compose run --entrypoint "" waveform-exporter emap-send-ftps my_pseudonymised_file.parquet
+```
 
 # Developing
 See [developing docs](docs/develop.md)

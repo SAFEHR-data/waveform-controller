@@ -64,12 +64,17 @@ def waveform_callback(ch, method_frame, _header_frame, body):
     lookup_success = True
     try:
         matched_mrn = emap_db.get_row(location_string, observation_time)
-    except ValueError as e:
+    except ValueError:
         lookup_success = False
-        logger.error(f"Ambiguous or non existent match: {e}")
+        logger.error(
+            "Ambiguous or non existent match for location %s, obs time %s",
+            location_string,
+            observation_time,
+            exc_info=True,
+        )
         matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
-    except ConnectionError as e:
-        logger.error(f"Database error, will try again: {e}")
+    except ConnectionError:
+        logger.error("Database error, will try again", exc_info=True)
         reject_message(ch, method_frame.delivery_tag, True)
         return
 

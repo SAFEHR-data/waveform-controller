@@ -1,0 +1,6 @@
+from pathlib import Path
+
+WAVEFORM_EXPORT_BASE = Path("/waveform-export")
+WAVEFORM_ORIGINAL_CSV = WAVEFORM_EXPORT_BASE / "original-csv"
+WAVEFORM_ORIGINAL_PARQUET = WAVEFORM_EXPORT_BASE / "original-parquet"
+WAVEFORM_PSEUDONYMISED_PARQUET = WAVEFORM_EXPORT_BASE / "pseudonymised"

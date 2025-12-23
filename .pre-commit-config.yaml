@@ -20,6 +20,7 @@ repos:
         args: [--config-file=pyproject.toml]
         additional_dependencies:
           [
+            "pandas-stubs",
             "types-psycopg2",
             "types-pika"
           ]
