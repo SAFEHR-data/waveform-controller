@@ -56,9 +56,14 @@ def csv_to_parquets(csv_path: Path):
             ("sampling_rate", pa.int32()),
             ("timestamp", pa.float64()),
             ("location", pa.string()),
-            # decimal32 can have a maximum of 9 significant digits.
-            # We can go to 64 if needed but let's try and keep it compact.
-            # But they're not exposed?? Use 128 instead.
+            # As per requirements, compactness is important here.
+            # decimal32 can have a maximum of 9 significant digits and should
+            # satisfy our needs, but it only exists in pyarrow >= 19.
+            # We are currently tied to 18.1 because of PIXL core.
+            # So for now, use decimal128 instead.
+            # Not yet tested whether the specified precision
+            # and scale cause it to be equivalent in size to decimal32.
+            # See issue #31.
             ("values", pa.list_(pa.decimal128(9, 4))),
         ]
     )
