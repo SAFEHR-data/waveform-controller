@@ -1,8 +1,8 @@
 from functools import lru_cache
-
+from stablehash import stablehash
 
 @lru_cache
-def do_hash(type_prefix, value: str):
+def do_hash(type_prefix: str, value: str):
     """Stub implementation of deidentification function for testing purposes.
 
     Not that I think this will happen in practice, but we'd want the CSN
@@ -11,5 +11,6 @@ def do_hash(type_prefix, value: str):
     """
     SALT = "waveform-exporter"
     full_value_to_hash = f"{SALT}:{type_prefix}:{value}"
-    hash_str = f"{hash(full_value_to_hash) & 0xFFFFFFFF:08x}"
-    return hash_str
+    full_hash = stablehash(full_value_to_hash).hexdigest()
+    tiny_hash = full_hash[:8]
+    return tiny_hash

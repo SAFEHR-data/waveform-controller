@@ -12,7 +12,7 @@ logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def do_upload():
+def do_upload_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "file_to_upload",
@@ -20,10 +20,10 @@ def do_upload():
         help="file to upload relative to pseudonymised folder",
     )
     args = parser.parse_args()
-    do_upload_inner(args.file_to_upload)
+    do_upload(args.file_to_upload)
 
 
-def do_upload_inner(rel_file_to_upload: Path):
+def do_upload(rel_file_to_upload: Path):
     # Absolute paths override the base path, so disallow that (abspath1 / abspath2 == abspath2)
     if rel_file_to_upload.is_absolute():
         raise ValueError("File must be relative to pseudonymised folder")

@@ -2,7 +2,6 @@ import argparse
 import functools
 from decimal import Decimal
 from pathlib import Path
-
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -11,7 +10,7 @@ from locations import WAVEFORM_ORIGINAL_PARQUET, WAVEFORM_PSEUDONYMISED_PARQUET
 from .hashing import do_hash
 
 
-def main():
+def pseudon_cli():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--csv", type=Path)
     args = arg_parser.parse_args()
@@ -22,6 +21,7 @@ def main():
 # - full identifiers (intended for debugging, NOT to be exported to DSH)
 # - pseudonymised identifiers (for export to DSH)
 def csv_to_parquets(csv_path: Path):
+    print("JES: DOING STUFF")
     WAVEFORM_ORIGINAL_PARQUET.mkdir(parents=False, exist_ok=True)
     WAVEFORM_PSEUDONYMISED_PARQUET.mkdir(parents=False, exist_ok=True)
     df = pd.read_csv(
