@@ -14,7 +14,6 @@ import csv_writer as writer  # type:ignore
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-
 emap_db = db.starDB()
 emap_db.init_query()
 emap_db.connect()

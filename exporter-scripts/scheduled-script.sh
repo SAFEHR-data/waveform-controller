@@ -2,5 +2,21 @@
 
 set -euo pipefail
 
-# This script is intended to be run by the cron scheduler
-snakemake --snakefile /app/src/pipeline/Snakefile --cores 1 /waveform-exports
+# This script is to be run by the cron scheduler, and its
+# output goes to the docker logs.
+# The snakemake output goes to its own log file as defined here.
+# These files will end up on Windows so be careful about disallowed characters in the names.
+date_str=$(date --utc +"%Y%m%dT%H%M%S")
+
+# log file for the overall snakemake run (as opposed to per-job logs,
+# which are defined in the snakefile)
+outer_log_file="/waveform-export/snakemake-logs/snakemake-outer-log${date_str}.log"
+echo "$0: Scheduled script is invoking snakemake, logging to $outer_log_file"
+touch "$outer_log_file"
+# XXX: temp --until!!!
+# XXX: make cores configurable?
+set +e
+snakemake --snakefile /app/src/pipeline/Snakefile --cores 1 --until csv_to_parquet >> "$outer_log_file" 2>&1
+ret_code=$?
+set -e
+echo "$0: snakemake exited with return code $ret_code"

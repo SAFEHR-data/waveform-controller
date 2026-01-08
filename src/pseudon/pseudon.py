@@ -1,12 +1,19 @@
 import argparse
 import functools
+import logging
 from decimal import Decimal
 from pathlib import Path
+
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from locations import WAVEFORM_ORIGINAL_PARQUET, WAVEFORM_PSEUDONYMISED_PARQUET
 
+from locations import (
+    WAVEFORM_ORIGINAL_PARQUET,
+    WAVEFORM_PSEUDONYMISED_PARQUET,
+    CSV_PATTERN,
+    FILE_STEM_PATTERN_HASHED, PSEUDONYMISED_PARQUET_PATTERN,
+)
 from .hashing import do_hash
 
 
@@ -17,11 +24,29 @@ def pseudon_cli():
     csv_to_parquets(args.csv)
 
 
-# convert CSV data (with full identifiers) to two versions in parquet format:
-# - full identifiers (intended for debugging, NOT to be exported to DSH)
-# - pseudonymised identifiers (for export to DSH)
-def csv_to_parquets(csv_path: Path):
-    print("JES: DOING STUFF")
+def csv_to_parquets(*, date_str: str, original_csn: str, hashed_csn: str, variable_id: str, units: str) -> None:
+    """
+    Convert CSV data (with full identifiers) to two versions in parquet format:
+    - full identifiers (intended for debugging, NOT to be exported to DSH)
+    - pseudonymised identifiers (for export to DSH)
+
+    This is a privacy-sensitive area of code. The two versions of the parquet file
+    have different names (hashed vs unhashed CSN). Unhashed CSNs must not appear in
+    the uploaded files.
+    It might have been more convenient (esp for CLI usage) to pass in the CSV path directly,
+    then parse out the sections here to generate both output file names,
+    but that is going to be lead to fragile assumptions that eg. element "1" is always the CSN.
+
+    Instead, pass in individual named components of the file path.
+    """
+    # will pick up the logger config defined in the snakemake job (ie. log to file)
+    logger = logging.getLogger(__name__)
+
+    csv_path = Path(str(CSV_PATTERN).format(date=date_str, csn=original_csn, stream_id=variable_id, units=units))
+    # it's in the csv_path, but at least nowhere else!
+    del original_csn
+
+    logger.info("Turning CSV %s to parquets", csv_path)
     WAVEFORM_ORIGINAL_PARQUET.mkdir(parents=False, exist_ok=True)
     WAVEFORM_PSEUDONYMISED_PARQUET.mkdir(parents=False, exist_ok=True)
     df = pd.read_csv(
@@ -79,23 +104,35 @@ def csv_to_parquets(csv_path: Path):
         write_statistics=True,  # enable indexes/statistics
         flavor="spark",
     )
+    logger.info("Done turning CSV %s to original parquet %s", csv_path, original_parquet_path)
 
     df = pseudonymise_relevant_columns(df)
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
-    # XXX: The file path itself contains an identifier (the CSN). See issue #26.
-    pseudon_parquet_path = WAVEFORM_PSEUDONYMISED_PARQUET / (csv_path.stem + ".parquet")
+    hashed_path = Path(str(PSEUDONYMISED_PARQUET_PATTERN).format(date=date_str, hashed_csn=hashed_csn, stream_id=variable_id, units=units))
     pq.write_table(
         pseudon_table,
-        str(pseudon_parquet_path),
+        str(hashed_path),
         compression="zstd",
         use_dictionary=True,
         write_statistics=True,  # enable indexes/statistics
         flavor="spark",
     )
+    logger.info("Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path)
 
+SAFE_COLUMNS = ["sampling_rate", "source_stream_id", "timestamp", "units", "values"]
 
 def pseudonymise_relevant_columns(df: pd.DataFrame):
-    for col in ["csn", "mrn", "location"]:
-        df[col] = df[col].apply(functools.partial(do_hash, col))
+    """
+    "csn", "mrn", "location" are examples of columns that must be pseudonymised.
+    However, it's safer to list which columns *don't* need to be pseudonymised.
+    Eg. you add a column but forget to consider whether it's sensitive, OR
+    you rename one of the known sensitive columns and forget that this will cause
+    privacy to break.
+    This means that when you add a new column, you have to add it here if you don't want it
+    to be hashed.
+    """
+    for col in df.columns:
+        if col not in SAFE_COLUMNS:
+            df[col] = df[col].apply(functools.partial(do_hash, col))
     return df

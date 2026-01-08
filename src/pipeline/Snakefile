@@ -9,11 +9,14 @@ from locations import (
     WAVEFORM_ORIGINAL_PARQUET,
     WAVEFORM_SNAKEMAKE_LOGS,
     WAVEFORM_PSEUDONYMISED_PARQUET,
-    WAVEFORM_FTPS_LOGS)
+    WAVEFORM_FTPS_LOGS,
+    FILE_STEM_PATTERN,
+    FILE_STEM_PATTERN_HASHED,
+    CSV_PATTERN,
+)
 from pathlib import Path
 from pseudon.hashing import do_hash
 from pseudon.pseudon import csv_to_parquets
-
 
 
 def get_file_age(file_path: Path) -> timedelta:
@@ -36,15 +39,13 @@ def hash_csn(csn: str) -> str:
 # so being very cautious here may not be necessary.
 CSV_WAIT_TIME = timedelta(minutes=5)
 
-# input_csvs = [f for f in WAVEFORM_ORIGINAL_CSV.glob("*.csv")
-#               if get_file_age(f) > CSV_WAIT_TIME
-#               ]
-
+# The problem here is that snakemake works "backwards" in that you have to define which
+# files you want to be produced, yet we don't know what output files we need until the
+# input files (original CSVs) are present.
+# Therefore, look at the input files and work out the eventual output files so they can
+# be fed into snakemake.
 
 # Parse all CSVs using the basic file name pattern
-FILE_STEM_PATTERN = "{date}.{csn}.{stream_id}.{units}"
-FILE_STEM_PATTERN_HASHED = "{date}.{hashed_csn}.{stream_id}.{units}"
-CSV_PATTERN = WAVEFORM_ORIGINAL_CSV / (FILE_STEM_PATTERN + ".csv")
 all_wc = glob_wildcards(CSV_PATTERN)
 
 # all_wc.date, all_wc.csn, all_wc.streamId, all_wc.units are parallel lists
@@ -64,9 +65,6 @@ for date, csn, stream_id, units in zip(all_wc.date, all_wc.csn, all_wc.stream_id
         stream_id = stream_id,
         units = units
     )
-    if csn == '5f5c24f4' or hash_csn(csn) == '5f5c24f4':
-        print("JES JES WTH")
-    print(f"{subs_dict}")
     orig_file = Path(str(CSV_PATTERN).format(**subs_dict))
     if csn == 'unmatched_csn':
         print(f"Skipping file with unmatched CSN: {orig_file}")
@@ -80,48 +78,45 @@ for date, csn, stream_id, units in zip(all_wc.date, all_wc.csn, all_wc.stream_id
     all_outputs.append(final_output_file)
 
 
-# for ic in input_csvs:
-#     print(f"input CSV: {ic}")
-
-for hash, csn in HASH_TO_CSN.items():
-    print(f"HASH_TO_CSN PID={os.getpid()}: {hash} ({type(hash)}): {csn} ({type(csn)})")
-
-# Derive the output parquet paths from them
-# def csv_to_ftps_sentinel(csv_path):
-#     return str(WAVEFORM_FTPS_LOGS / Path(csv_path).name.replace(".csv", ".ftps.sent"))
-
-# all_outputs = [csv_to_ftps_sentinel(f) for f in input_csvs]
-
-for oc in all_outputs:
-    print(f"output CSV: {oc}")
-
-# I don't use f-strings in the input/output patterns because the escapes get too confusing
 rule all:
     input:
         all_outputs
 
 def input_file_maker(wc):
-    # lambda wc: WAVEFORM_ORIGINAL_CSV / f"{wc.date}.{HASH_TO_CSN[wc.hashed_csn]}.{wc.stream_id}.{wc.units}.csv"
-    print(f"input_file_maker: {len(HASH_TO_CSN)} - {wc.hashed_csn} ({type(wc.hashed_csn)}) - {HASH_TO_CSN.get(wc.hashed_csn)} ({type(HASH_TO_CSN.get(wc.hashed_csn))}) ", file=sys.stderr)
-    print(f"input_file_maker(pre) PID={os.getpid()} looking up {wc.hashed_csn} (={HASH_TO_CSN.get(wc.hashed_csn)}) in hash of length {len(HASH_TO_CSN)} entries", file=sys.stderr)
-    print(f"input_file_maker(pre) hashkeys={HASH_TO_CSN.keys()}", file=sys.stderr)
     unhashed_csn = HASH_TO_CSN[wc.hashed_csn]
-    print(f"input_file_maker(post) found {unhashed_csn}", file=sys.stderr)
+    # when using input functions, snakemake doesn't do its normal templating, you have to do it, hence the f-string
     return WAVEFORM_ORIGINAL_CSV / f"{wc.date}.{unhashed_csn}.{wc.stream_id}.{wc.units}.csv"
 
 rule csv_to_parquet:
     input:
-        # WAVEFORM_ORIGINAL_CSV / (FILE_STEM_PATTERN + ".csv"),
-        # when using input functions, snakemake doesn't do its normal templating, you have to do it, hence the f-string
         input_file_maker
     output:
+        # Do not specify the original parquet as an output, even though it is,
+        # because snakemake doesn't allow a different subset of wildcards to be used in each output file.
         # WAVEFORM_ORIGINAL_PARQUET / (FILE_STEM_PATTERN + ".parquet"),
         WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
     log:
         # these do not get uploaded as they may contain identifiers
         WAVEFORM_SNAKEMAKE_LOGS / (FILE_STEM_PATTERN_HASHED + ".log")
     run:
-        csv_to_parquets(Path(input[0]))
+        import logging
+        logging.basicConfig(
+            filename=log[0],
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            force=True
+        )
+        print(f"Configured logging to use file {log[0]}")
+        logger = logging.getLogger(__name__)
+
+        original_csn = HASH_TO_CSN[wildcards.hashed_csn]
+        logger.info("Running csv to parquets, csn %s -> %s", original_csn, wildcards.hashed_csn)
+        csv_to_parquets(
+            date_str=wildcards.date,
+            original_csn=original_csn,
+            hashed_csn=wildcards.hashed_csn,
+            variable_id=wildcards.stream_id,
+            units=wildcards.units)
 
 rule send_ftps:
     input:
