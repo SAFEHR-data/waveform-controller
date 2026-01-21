@@ -11,6 +11,8 @@ date_str=$(date --utc +"%Y%m%dT%H%M%S")
 # log file for the overall snakemake run (as opposed to per-job logs,
 # which are defined in the snakefile)
 outer_log_file="/waveform-export/snakemake-logs/snakemake-outer-log${date_str}.log"
+# snakemake has not run yet so will not create the log dir; do it manually
+mkdir -p "$(dirname "$outer_log_file")"
 echo "$0: Scheduled script is invoking snakemake, logging to $outer_log_file"
 touch "$outer_log_file"
 # XXX: temp --until!!!
