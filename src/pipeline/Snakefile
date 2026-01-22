@@ -86,6 +86,19 @@ def determine_eventual_outputs():
 
 all_outputs, hash_to_csn = determine_eventual_outputs()
 
+def configure_file_logging(log_file):
+    import logging
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        force=True
+    )
+    print(f"Configured logging to use file {log_file}")
+    logger = logging.getLogger(__name__)
+    return logger
+
+
 rule all:
     input:
         all_outputs
@@ -107,16 +120,7 @@ rule csv_to_parquet:
         # these do not get uploaded as they may contain identifiers
         WAVEFORM_SNAKEMAKE_LOGS / (FILE_STEM_PATTERN_HASHED + ".log")
     run:
-        import logging
-        logging.basicConfig(
-            filename=log[0],
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            force=True
-        )
-        print(f"Configured logging to use file {log[0]}")
-        logger = logging.getLogger(__name__)
-
+        logger = configure_file_logging(log[0])
         original_csn = hash_to_csn[wildcards.hashed_csn]
         logger.info("Running csv to parquets, csn %s -> %s", original_csn, wildcards.hashed_csn)
         csv_to_parquets(
@@ -135,4 +139,8 @@ rule send_ftps:
     log:
         WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.log")
     run:
+        logger = configure_file_logging(log[0])
+        logger.info("Calling do_upload to upload file %s", input[0])
         do_upload(Path(input[0]))
+
+

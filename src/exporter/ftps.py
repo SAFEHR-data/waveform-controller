@@ -8,10 +8,6 @@ from core.uploader._ftps import _connect_to_ftp, _create_and_set_as_cwd
 
 from locations import WAVEFORM_PSEUDONYMISED_PARQUET
 
-logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
-logger = logging.getLogger(__name__)
-
-
 def do_upload_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -24,6 +20,7 @@ def do_upload_cli():
 
 
 def do_upload(rel_file_to_upload: Path):
+    logger = logging.getLogger(__name__)
     # Absolute paths override the base path, so disallow that (abspath1 / abspath2 == abspath2)
     if rel_file_to_upload.is_absolute():
         raise ValueError("File must be relative to pseudonymised folder")
