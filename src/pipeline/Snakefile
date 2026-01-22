@@ -19,7 +19,6 @@ from pathlib import Path
 from pseudon.hashing import do_hash
 from pseudon.pseudon import csv_to_parquets
 
-
 def get_file_age(file_path: Path) -> timedelta:
     # need to use UTC to avoid DST issues
     file_time_utc = datetime.fromtimestamp(file_path.stat().st_mtime, timezone.utc)
@@ -77,7 +76,7 @@ def determine_eventual_outputs():
             print(f"File too new (age={file_age}): {orig_file}")
             continue
         final_stem = FILE_STEM_PATTERN_HASHED.format(**subs_dict)
-        final_output_file = WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.sent")
+        final_output_file = WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
         _all_outputs.append(final_output_file)
     after = time.perf_counter()
     print(f"Calculated output files using newness threshold {CSV_WAIT_TIME} in {after - before} seconds")
@@ -130,17 +129,36 @@ rule csv_to_parquet:
             variable_id=wildcards.stream_id,
             units=wildcards.units)
 
+
 rule send_ftps:
     input:
         WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
     output:
         # sentinel file
-        WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.sent")
+        WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.uploaded.json")
     log:
         WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.log")
     run:
+        from datetime import datetime
+        import json
+        import time
+        start_perf = time.perf_counter()
+        start_timestamp = datetime.now(timezone.utc).isoformat()
         logger = configure_file_logging(log[0])
         logger.info("Calling do_upload to upload file %s", input[0])
         do_upload(Path(input[0]))
-
+        end_perf = time.perf_counter()
+        end_timestamp = datetime.now(timezone.utc).isoformat()
+        # now that we have success, create the sentinel file
+        with open(output[0], "w") as fh:
+            json.dump(
+                {
+                    "uploaded_file": str(input[0]),
+                    "upload_time_secs": end_perf - start_perf,
+                    "start_timestamp": start_timestamp,
+                    "end_timestamp": end_timestamp,
+                },
+                fh,
+                indent=0,
+            )
 
