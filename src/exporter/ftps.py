@@ -19,17 +19,20 @@ def do_upload_cli():
     do_upload(args.file_to_upload)
 
 
-def do_upload(rel_file_to_upload: Path):
+def do_upload(abs_file_to_upload: Path):
+    """
+    We need to ensure that a user cannot accidentally ask for a file to be uploaded
+    unless it's under the correct directory that we know contains pseudonymised data.
+
+    """
     logger = logging.getLogger(__name__)
-    # Absolute paths override the base path, so disallow that (abspath1 / abspath2 == abspath2)
-    if rel_file_to_upload.is_absolute():
+    # Keep things simple, paths must be absolute
+    if not abs_file_to_upload.is_absolute():
         raise ValueError("File must be relative to pseudonymised folder")
-    WAVEFORM_PSEUDONYMISED_PARQUET.mkdir(parents=False, exist_ok=True)
-    file_to_upload = (WAVEFORM_PSEUDONYMISED_PARQUET / rel_file_to_upload).resolve(
-        strict=True
-    )
-    # Check that even after evaluating ".." and symlinks, the file is still under the "safe" directory
-    # for upload.
+    # Even an absolute path may contain a ".." or a symlink. Fully resolve so we
+    # know what we are dealing with.
+    file_to_upload = abs_file_to_upload.resolve()
+    # Check the file is still under the "safe" directory for upload.
     if not file_to_upload.is_relative_to(WAVEFORM_PSEUDONYMISED_PARQUET):
         raise ValueError(
             f"File {file_to_upload} must be under {WAVEFORM_PSEUDONYMISED_PARQUET}. "
