@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from snakemake.io import glob_wildcards
 from exporter.ftps import do_upload
@@ -47,6 +48,7 @@ CSV_WAIT_TIME = timedelta(minutes=5)
 
 def determine_eventual_outputs():
     # Parse all CSVs using the basic file name pattern
+    before = time.perf_counter()
     all_wc = glob_wildcards(CSV_PATTERN)
 
     # all_wc.date, all_wc.csn, all_wc.streamId, all_wc.units are parallel lists
@@ -72,11 +74,13 @@ def determine_eventual_outputs():
             continue
         file_age = get_file_age(orig_file)
         if file_age < CSV_WAIT_TIME:
-            print(f"Skipping file that's too new ({file_age=}): {orig_file}")
+            print(f"File too new (age={file_age}): {orig_file}")
             continue
         final_stem = FILE_STEM_PATTERN_HASHED.format(**subs_dict)
         final_output_file = WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.sent")
         _all_outputs.append(final_output_file)
+    after = time.perf_counter()
+    print(f"Calculated output files using newness threshold {CSV_WAIT_TIME} in {after - before} seconds")
     return _all_outputs, _hash_to_csn
 
 
