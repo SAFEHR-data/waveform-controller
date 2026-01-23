@@ -9,6 +9,7 @@ def do_hash(type_prefix: str, value: str):
     "1234" to hash to a different value than the MRN "1234", so prefix
     each value with its type.
     """
+    # Full implementation of issue #6 must remove this code and call the real hasher!!
     SALT = "waveform-exporter"
     full_value_to_hash = f"{SALT}:{type_prefix}:{value}"
     full_hash = stablehash(full_value_to_hash).hexdigest()
