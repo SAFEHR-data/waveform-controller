@@ -24,10 +24,14 @@ from src.exporter import ftps
         ["/", False],
     ],
 )
-def test_do_upload_input_paths(monkeypatch, tmp_path: Path, rel_path_to_try: str, should_pass: bool):
+def test_do_upload_input_paths(
+    monkeypatch, tmp_path: Path, rel_path_to_try: str, should_pass: bool
+):
     fake_abs_root = tmp_path.absolute()
     fake_waveform_pseudonymised_parquet = fake_abs_root / "pseudonymised"
-    monkeypatch.setattr(ftps, "WAVEFORM_PSEUDONYMISED_PARQUET", fake_waveform_pseudonymised_parquet)
+    monkeypatch.setattr(
+        ftps, "WAVEFORM_PSEUDONYMISED_PARQUET", fake_waveform_pseudonymised_parquet
+    )
 
     ftp_mock = Mock()
     connect_mock = Mock(return_value=ftp_mock)

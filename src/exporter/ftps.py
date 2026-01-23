@@ -8,6 +8,7 @@ from core.uploader._ftps import _connect_to_ftp, _create_and_set_as_cwd
 
 from locations import WAVEFORM_PSEUDONYMISED_PARQUET
 
+
 def do_upload_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -20,11 +21,8 @@ def do_upload_cli():
 
 
 def do_upload(abs_file_to_upload: Path):
-    """
-    We need to ensure that a user cannot accidentally ask for a file to be uploaded
-    unless it's under the correct directory that we know contains pseudonymised data.
-
-    """
+    """We need to ensure that a user cannot accidentally ask for a file to be uploaded
+    unless it's under the correct directory that we know contains pseudonymised data."""
     logger = logging.getLogger(__name__)
     # Keep things simple, paths must be absolute
     if not abs_file_to_upload.is_absolute():

@@ -161,4 +161,3 @@ rule send_ftps:
                 fh,
                 indent=0,
             )
-

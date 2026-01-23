@@ -4,6 +4,17 @@ repos:
     hooks:
       - id: detect-secrets
         args: [--exclude-secrets=(^my_pw$)|(^inform$)]
+  # Formats docstrings to comply with PEP257.
+  # Use --black to keep output compatible with ruff-format.
+  - repo: https://github.com/PyCQA/docformatter
+    rev: 06907d0
+    hooks:
+      - id: docformatter
+        additional_dependencies: [tomli]
+        args:
+          - --in-place
+          - --black
+          - --config=pyproject.toml
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.2
     hooks:
@@ -25,14 +36,6 @@ repos:
             "types-pika"
           ]
         files: src/
-  # ----------
-  # Formats docstrings to comply with PEP257
-  - repo: https://github.com/PyCQA/docformatter
-    rev: 06907d0
-    hooks:
-      - id: docformatter
-        additional_dependencies: [tomli]
-        args: [--config=pyproject.toml]
   # a collection of sanity checks: check for merge conflicts, check the end of
   # lines, check for DOS vs unix stuff, and a newline at the end of files.
   - repo: https://github.com/pre-commit/pre-commit-hooks

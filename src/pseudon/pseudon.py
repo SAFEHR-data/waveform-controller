@@ -12,7 +12,7 @@ from locations import (
     WAVEFORM_ORIGINAL_PARQUET,
     WAVEFORM_PSEUDONYMISED_PARQUET,
     CSV_PATTERN,
-    FILE_STEM_PATTERN_HASHED, PSEUDONYMISED_PARQUET_PATTERN,
+    PSEUDONYMISED_PARQUET_PATTERN,
 )
 from .hashing import do_hash
 
@@ -24,9 +24,12 @@ def pseudon_cli():
     csv_to_parquets(args.csv)
 
 
-def csv_to_parquets(*, date_str: str, original_csn: str, hashed_csn: str, variable_id: str, units: str) -> None:
-    """
-    Convert CSV data (with full identifiers) to two versions in parquet format:
+def csv_to_parquets(
+    *, date_str: str, original_csn: str, hashed_csn: str, variable_id: str, units: str
+) -> None:
+    """Convert CSV data (with full identifiers) to two versions in parquet
+    format:
+
     - full identifiers (intended for debugging, NOT to be exported to DSH)
     - pseudonymised identifiers (for export to DSH)
 
@@ -42,7 +45,11 @@ def csv_to_parquets(*, date_str: str, original_csn: str, hashed_csn: str, variab
     # will pick up the logger config defined in the snakemake job (ie. log to file)
     logger = logging.getLogger(__name__)
 
-    csv_path = Path(str(CSV_PATTERN).format(date=date_str, csn=original_csn, stream_id=variable_id, units=units))
+    csv_path = Path(
+        str(CSV_PATTERN).format(
+            date=date_str, csn=original_csn, stream_id=variable_id, units=units
+        )
+    )
     # it's in the csv_path, but at least nowhere else!
     del original_csn
 
@@ -104,12 +111,18 @@ def csv_to_parquets(*, date_str: str, original_csn: str, hashed_csn: str, variab
         write_statistics=True,  # enable indexes/statistics
         flavor="spark",
     )
-    logger.info("Done turning CSV %s to original parquet %s", csv_path, original_parquet_path)
+    logger.info(
+        "Done turning CSV %s to original parquet %s", csv_path, original_parquet_path
+    )
 
     df = pseudonymise_relevant_columns(df)
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
-    hashed_path = Path(str(PSEUDONYMISED_PARQUET_PATTERN).format(date=date_str, hashed_csn=hashed_csn, stream_id=variable_id, units=units))
+    hashed_path = Path(
+        str(PSEUDONYMISED_PARQUET_PATTERN).format(
+            date=date_str, hashed_csn=hashed_csn, stream_id=variable_id, units=units
+        )
+    )
     pq.write_table(
         pseudon_table,
         str(hashed_path),
@@ -118,19 +131,22 @@ def csv_to_parquets(*, date_str: str, original_csn: str, hashed_csn: str, variab
         write_statistics=True,  # enable indexes/statistics
         flavor="spark",
     )
-    logger.info("Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path)
+    logger.info(
+        "Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path
+    )
+
 
 SAFE_COLUMNS = ["sampling_rate", "source_stream_id", "timestamp", "units", "values"]
 
+
 def pseudonymise_relevant_columns(df: pd.DataFrame):
-    """
-    "csn", "mrn", "location" are examples of columns that must be pseudonymised.
-    However, it's safer to list which columns *don't* need to be pseudonymised.
-    Eg. you add a column but forget to consider whether it's sensitive, OR
-    you rename one of the known sensitive columns and forget that this will cause
-    privacy to break.
-    This means that when you add a new column, you have to add it here if you don't want it
-    to be hashed.
+    """ "csn", "mrn", "location" are examples of columns that must be pseudonymised.
+
+    However, it's safer to list which columns *don't* need to be pseudonymised. Eg. you
+    add a column but forget to consider whether it's sensitive, OR you rename one of the
+    known sensitive columns and forget that this will cause privacy to break. This means
+    that when you add a new column, you have to add it here if you don't want it to be
+    hashed.
     """
     for col in df.columns:
         if col not in SAFE_COLUMNS:
