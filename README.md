@@ -60,15 +60,11 @@ mkdir config
 cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
 cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/settings.env
 cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
-cp waveform-controller/config.EXAMPLE/.env.EXAMPLE waveform-controller/.env
 ```
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
 
 #### fill in config files
 Fill out the config, as appropriate.
-
-Tip: HASHER_API_LISTEN_PORT should match HASHER_API_PORT if you are running your own instance of the
-PIXL hasher (as things stand, we are doing so).
 
 When updating to a new version of this code, you should diff the .EXAMPLE file against its live version,
 eg. by running `vimdiff waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env`.
