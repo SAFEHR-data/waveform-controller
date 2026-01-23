@@ -3,9 +3,8 @@ name: Run pytest
 on: 
   push:
     branches: [main, dev]
-    pull_request:
-      branches: [main, dev]
-      types: ["opened", "reopened", "synchronize", "ready_for_review", "draft"]
+  pull_request:
+    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
