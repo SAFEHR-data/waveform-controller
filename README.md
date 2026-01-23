@@ -48,18 +48,38 @@ separate to the Emap project root.
 
 ### Instructions for achieving this structure
 
+
+#### Clone repos
 Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
 both inside your root directory.
 
+#### make config files
 Set up the config files as follows:
 ```
 mkdir config
 cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
 cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/settings.env
 cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
+cp waveform-controller/config.EXAMPLE/.env.EXAMPLE waveform-controller/.env
 ```
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
 
+#### fill in config files
+Fill out the config, as appropriate.
+
+Tip: HASHER_API_LISTEN_PORT should match HASHER_API_PORT if you are running your own instance of the
+PIXL hasher (as things stand, we are doing so).
+
+When updating to a new version of this code, you should diff the .EXAMPLE file against its live version,
+eg. by running `vimdiff waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env`.
+
+This checks if any config options have been added/removed from the .EXAMPLE, and thus should be
+added/removed from the live file.
+
+> [!CAUTION]
+> Be careful not to copy sensitive data from the live config file to the .EXAMPLE file!
+
+#### make necessary directories
 If it doesn't already exist you should create a directory named
 `waveform-export` in the parent directory to store the saved waveform
 messages.
@@ -67,6 +87,8 @@ messages.
 ```
 mkdir waveform-export
 ```
+
+#### run it!
 
 Build and start the controller and exporter with docker
 ```

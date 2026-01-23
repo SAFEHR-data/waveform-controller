@@ -47,7 +47,7 @@ services:
         HTTPS_PROXY: ${HTTPS_PROXY}
         https_proxy: ${https_proxy}
     ports:
-      - "127.0.0.1:${HASHER_API_PORT}:8000"
+      - "127.0.0.1:${HASHER_API_LISTEN_PORT}:8000"
     env_file:
       - ../config/hasher.env
     restart: unless-stopped

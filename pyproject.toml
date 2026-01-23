@@ -12,7 +12,7 @@ dependencies = [
     "snakemake==9.14.5",
     # need to be compatible with PIXL, which currently pins 2.9.10 (arguably it shouldn't)
     "psycopg2-binary>=2.9.10",
-    "stablehash==0.3.0",
+    "requests==2.32.3",
     # trick for making a "relative" path, works inside or outside container image
     "core @ file:///${PROJECT_ROOT}/../PIXL/pixl_core",
 ]
