@@ -8,6 +8,8 @@ set -euo pipefail
 # These files will end up on Windows so be careful about disallowed characters in the names.
 date_str=$(date --utc +"%Y%m%dT%H%M%S")
 SNAKEMAKE_CORES="${SNAKEMAKE_CORES:-1}"
+# for temporarily making the pipeline not go all the way
+SNAKEMAKE_RULE_UNTIL="${SNAKEMAKE_RULE_UNTIL:-all}"
 
 # log file for the overall snakemake run (as opposed to per-job logs,
 # which are defined in the snakefile)
@@ -23,6 +25,7 @@ set +a
 set +e
 snakemake --snakefile /app/src/pipeline/Snakefile \
   --cores "$SNAKEMAKE_CORES" \
+  --until "$SNAKEMAKE_RULE_UNTIL" \
   >> "$outer_log_file" 2>&1
 ret_code=$?
 set -e
