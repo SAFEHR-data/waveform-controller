@@ -6,17 +6,18 @@ from datetime import datetime, timezone
 @pytest.mark.parametrize(
     "units, expected_filename",
     [
-        ("uV", "2025-01-01.12345678.11.uV.csv"),
-        ("mL/s", "2025-01-01.12345678.11.mLps.csv"),
-        ("%", "2025-01-01.12345678.11.percent.csv"),
+        ("uV", "2025-01-01.12345678.11.3.uV.csv"),
+        ("mL/s", "2025-01-01.12345678.11.3.mLps.csv"),
+        ("%", "2025-01-01.12345678.11.3.percent.csv"),
     ],
 )
 def test_create_file_name_handles_units(units, expected_filename, tmp_path):
-    sourceStreamId = "11"
+    source_variable_id = "11"
+    source_channel_id = "3"
     observationTime = datetime(2025, 1, 1, 10, 10, 10, tzinfo=timezone.utc)
     csn = "12345678"
 
-    filename = create_file_name(sourceStreamId, observationTime, csn, units)
+    filename = create_file_name(source_variable_id, source_channel_id, observationTime, csn, units)
 
     assert filename == expected_filename
 

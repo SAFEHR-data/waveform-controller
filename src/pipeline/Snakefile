@@ -59,12 +59,14 @@ def determine_eventual_outputs():
         _hash_to_csn[hash_csn(csn)] = csn
     # Apply all_wc to FILE_STEM_PATTERN_HASHED to generate the output stems
     _all_outputs = []
-    for date, csn, stream_id, units in zip(all_wc.date, all_wc.csn, all_wc.stream_id, all_wc.units):
+    for date, csn, variable_id, channel_id, units \
+            in zip(all_wc.date, all_wc.csn, all_wc.variable_id, all_wc.channel_id, all_wc.units):
         subs_dict = dict(
             date = date,
             csn = csn,
             hashed_csn = hash_csn(csn),
-            stream_id = stream_id,
+            variable_id = variable_id,
+            channel_id = channel_id,
             units = units
         )
         orig_file = Path(str(CSV_PATTERN).format(**subs_dict))
@@ -105,7 +107,7 @@ rule all:
 def input_file_maker(wc):
     unhashed_csn = hash_to_csn[wc.hashed_csn]
     # when using input functions, snakemake doesn't do its normal templating, you have to do it, hence the f-string
-    return WAVEFORM_ORIGINAL_CSV / f"{wc.date}.{unhashed_csn}.{wc.stream_id}.{wc.units}.csv"
+    return WAVEFORM_ORIGINAL_CSV / f"{wc.date}.{unhashed_csn}.{wc.variable_id}.{wc.channel_id}.{wc.units}.csv"
 
 rule csv_to_parquet:
     input:
@@ -126,7 +128,8 @@ rule csv_to_parquet:
             date_str=wildcards.date,
             original_csn=original_csn,
             hashed_csn=wildcards.hashed_csn,
-            variable_id=wildcards.stream_id,
+            variable_id=wildcards.variable_id,
+            channel_id=wildcards.channel_id,
             units=wildcards.units)
 
 

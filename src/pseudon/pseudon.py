@@ -25,7 +25,7 @@ def pseudon_cli():
 
 
 def csv_to_parquets(
-    *, date_str: str, original_csn: str, hashed_csn: str, variable_id: str, units: str
+    *, date_str: str, original_csn: str, hashed_csn: str, variable_id: str, channel_id: str, units: str
 ) -> None:
     """Convert CSV data (with full identifiers) to two versions in parquet
     format:
@@ -47,7 +47,7 @@ def csv_to_parquets(
 
     csv_path = Path(
         str(CSV_PATTERN).format(
-            date=date_str, csn=original_csn, stream_id=variable_id, units=units
+            date=date_str, csn=original_csn, variable_id=variable_id, channel_id=channel_id, units=units
         )
     )
     # it's in the csv_path, but at least nowhere else!
@@ -61,7 +61,8 @@ def csv_to_parquets(
         dtype={
             "csn": str,
             "mrn": str,
-            "source_stream_id": str,
+            "source_variable_id": str,
+            "source_channel_id": str,
             "units": str,
             "sampling_rate": int,
             "timestamp": float,
@@ -83,7 +84,8 @@ def csv_to_parquets(
         [
             ("csn", pa.string()),
             ("mrn", pa.string()),
-            ("source_stream_id", pa.string()),
+            ("source_variable_id", pa.string()),
+            ("source_channel_id", pa.string()),
             ("units", pa.string()),
             ("sampling_rate", pa.int32()),
             ("timestamp", pa.float64()),
@@ -120,7 +122,7 @@ def csv_to_parquets(
 
     hashed_path = Path(
         str(PSEUDONYMISED_PARQUET_PATTERN).format(
-            date=date_str, hashed_csn=hashed_csn, stream_id=variable_id, units=units
+            date=date_str, hashed_csn=hashed_csn, variable_id=variable_id, channel_id=channel_id, units=units
         )
     )
     pq.write_table(
@@ -136,7 +138,7 @@ def csv_to_parquets(
     )
 
 
-SAFE_COLUMNS = ["sampling_rate", "source_stream_id", "timestamp", "units", "values"]
+SAFE_COLUMNS = ["sampling_rate", "source_variable_id", "source_channel_id", "timestamp", "units", "values"]
 
 
 def pseudonymise_relevant_columns(df: pd.DataFrame):

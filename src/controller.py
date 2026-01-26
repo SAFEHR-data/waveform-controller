@@ -47,7 +47,8 @@ def waveform_callback(ch, method_frame, _header_frame, body):
     try:
         location_string = data["mappedLocationString"]
         observation_timestamp = data["observationTime"]
-        source_stream_id = data["sourceStreamId"]
+        source_variable_id = data["sourceVariableId"]
+        source_channel_id = data["sourceChannelId"]
         sampling_rate = data["samplingRate"]
         units = data["unit"]
         waveform_data = data["numericValues"]
@@ -79,7 +80,8 @@ def waveform_callback(ch, method_frame, _header_frame, body):
 
     if writer.write_frame(
         waveform_data,
-        source_stream_id,
+        source_variable_id,
+        source_channel_id,
         observation_timestamp,
         units,
         sampling_rate,
