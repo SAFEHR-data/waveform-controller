@@ -58,7 +58,7 @@ Set up the config files as follows:
 ```
 mkdir config
 cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
-cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/settings.env
+cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/exporter.env
 cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
 ```
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
