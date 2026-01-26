@@ -2,7 +2,8 @@
 
 import csv
 from datetime import datetime
-from locations import WAVEFORM_ORIGINAL_CSV
+
+from locations import WAVEFORM_ORIGINAL_CSV, make_file_name, FILE_STEM_PATTERN
 
 
 def create_file_name(
@@ -14,7 +15,15 @@ def create_file_name(
     datestring = observation_time.strftime("%Y-%m-%d")
     units = units.replace("/", "p")
     units = units.replace("%", "percent")
-    return f"{datestring}.{csn}.{source_variable_id}.{source_channel_id}.{units}.csv"
+    subs_dict = dict(
+        date=datestring,
+        csn=csn,
+        variable_id=source_variable_id,
+        channel_id=source_channel_id,
+        units=units,
+    )
+    stem = make_file_name(FILE_STEM_PATTERN, subs_dict)
+    return f"{stem}.csv"
 
 
 def write_frame(
