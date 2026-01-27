@@ -75,7 +75,7 @@ git push
 
 Even though we are largely running in docker, you may wish to let your IDE have access to a venv for running tests in.
 
-Create the venv in the parent of the repo root and activate it.
+Create the venv in the parent of the repo root and activate it (example for macOS/Linux shown, Windows can differ).
 ```
 uv venv --python=3.13
 source .venv/bin/activate
