@@ -14,7 +14,6 @@ import csv_writer as writer  # type:ignore
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-
 emap_db = db.starDB()
 emap_db.init_query()
 emap_db.connect()
@@ -28,8 +27,8 @@ class waveform_message:
 
 
 def ack_message(ch, delivery_tag):
-    """Note that `ch` must be the same pika channel instance via which the
-    message being ACKed was retrieved (AMQP protocol constraint)."""
+    """Note that `ch` must be the same pika channel instance via which the message being
+    ACKed was retrieved (AMQP protocol constraint)."""
     if ch.is_open:
         ch.basic_ack(delivery_tag)
     else:

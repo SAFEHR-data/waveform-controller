@@ -1,0 +1,163 @@
+import os
+import sys
+import time
+from datetime import datetime, timedelta, timezone
+from snakemake.io import glob_wildcards
+from exporter.ftps import do_upload
+from locations import (
+    WAVEFORM_EXPORT_BASE,
+    WAVEFORM_ORIGINAL_CSV,
+    WAVEFORM_ORIGINAL_PARQUET,
+    WAVEFORM_SNAKEMAKE_LOGS,
+    WAVEFORM_PSEUDONYMISED_PARQUET,
+    WAVEFORM_FTPS_LOGS,
+    FILE_STEM_PATTERN,
+    FILE_STEM_PATTERN_HASHED,
+    CSV_PATTERN,
+)
+from pathlib import Path
+from pseudon.hashing import do_hash
+from pseudon.pseudon import csv_to_parquets
+
+def get_file_age(file_path: Path) -> timedelta:
+    # need to use UTC to avoid DST issues
+    file_time_utc = datetime.fromtimestamp(file_path.stat().st_mtime, timezone.utc)
+    now_utc = datetime.now(timezone.utc)
+    return now_utc - file_time_utc
+
+def hash_csn(csn: str) -> str:
+    return do_hash("csn", csn)
+
+
+# How long before we assume that no more data will be written to the file, and
+# that we can process it.
+# In production we may wish to use something in the order of hours.
+# We may also wish to compare it to the latest modified time of *any* file,
+# to be sure that the data hasn't just stopped coming in altogether. (would not
+# protect against very out of order data though)
+# Also note that snakemake can detect and re-run if the file is subsequently updated,
+# so being very cautious here may not be necessary.
+CSV_WAIT_TIME = timedelta(minutes=5)
+
+# The problem here is that snakemake works "backwards" in that you have to define which
+# files you want to be produced, yet we don't know what output files we need until the
+# input files (original CSVs) are present.
+# Therefore, look at the input files and work out the eventual output files so they can
+# be fed into snakemake.
+
+def determine_eventual_outputs():
+    # Parse all CSVs using the basic file name pattern
+    before = time.perf_counter()
+    all_wc = glob_wildcards(CSV_PATTERN)
+
+    # all_wc.date, all_wc.csn, all_wc.streamId, all_wc.units are parallel lists
+    # e.g. all_wc.csn[0] corresponds to all_wc.date[0], etc.
+
+    # Build reverse lookup using named wildcards
+    _hash_to_csn: dict[str, str] = {}
+    for csn in all_wc.csn:
+        _hash_to_csn[hash_csn(csn)] = csn
+    # Apply all_wc to FILE_STEM_PATTERN_HASHED to generate the output stems
+    _all_outputs = []
+    for date, csn, stream_id, units in zip(all_wc.date, all_wc.csn, all_wc.stream_id, all_wc.units):
+        subs_dict = dict(
+            date = date,
+            csn = csn,
+            hashed_csn = hash_csn(csn),
+            stream_id = stream_id,
+            units = units
+        )
+        orig_file = Path(str(CSV_PATTERN).format(**subs_dict))
+        if csn == 'unmatched_csn':
+            print(f"Skipping file with unmatched CSN: {orig_file}")
+            continue
+        file_age = get_file_age(orig_file)
+        if file_age < CSV_WAIT_TIME:
+            print(f"File too new (age={file_age}): {orig_file}")
+            continue
+        final_stem = FILE_STEM_PATTERN_HASHED.format(**subs_dict)
+        final_output_file = WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
+        _all_outputs.append(final_output_file)
+    after = time.perf_counter()
+    print(f"Calculated output files using newness threshold {CSV_WAIT_TIME} in {after - before} seconds")
+    return _all_outputs, _hash_to_csn
+
+
+all_outputs, hash_to_csn = determine_eventual_outputs()
+
+def configure_file_logging(log_file):
+    import logging
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        force=True
+    )
+    print(f"Configured logging to use file {log_file}")
+    logger = logging.getLogger(__name__)
+    return logger
+
+
+rule all:
+    input:
+        all_outputs
+
+def input_file_maker(wc):
+    unhashed_csn = hash_to_csn[wc.hashed_csn]
+    # when using input functions, snakemake doesn't do its normal templating, you have to do it, hence the f-string
+    return WAVEFORM_ORIGINAL_CSV / f"{wc.date}.{unhashed_csn}.{wc.stream_id}.{wc.units}.csv"
+
+rule csv_to_parquet:
+    input:
+        input_file_maker
+    output:
+        # Do not specify the original parquet as an output, even though it is,
+        # because snakemake doesn't allow a different subset of wildcards to be used in each output file.
+        # WAVEFORM_ORIGINAL_PARQUET / (FILE_STEM_PATTERN + ".parquet"),
+        WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
+    log:
+        # these do not get uploaded as they may contain identifiers
+        WAVEFORM_SNAKEMAKE_LOGS / (FILE_STEM_PATTERN_HASHED + ".log")
+    run:
+        logger = configure_file_logging(log[0])
+        original_csn = hash_to_csn[wildcards.hashed_csn]
+        logger.info("Running csv to parquets, csn %s -> %s", original_csn, wildcards.hashed_csn)
+        csv_to_parquets(
+            date_str=wildcards.date,
+            original_csn=original_csn,
+            hashed_csn=wildcards.hashed_csn,
+            variable_id=wildcards.stream_id,
+            units=wildcards.units)
+
+
+rule send_ftps:
+    input:
+        WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
+    output:
+        # sentinel file
+        WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.uploaded.json")
+    log:
+        WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.log")
+    run:
+        from datetime import datetime
+        import json
+        import time
+        start_perf = time.perf_counter()
+        start_timestamp = datetime.now(timezone.utc).isoformat()
+        logger = configure_file_logging(log[0])
+        logger.info("Calling do_upload to upload file %s", input[0])
+        do_upload(Path(input[0]))
+        end_perf = time.perf_counter()
+        end_timestamp = datetime.now(timezone.utc).isoformat()
+        # now that we have success, create the sentinel file
+        with open(output[0], "w") as fh:
+            json.dump(
+                {
+                    "uploaded_file": str(input[0]),
+                    "upload_time_secs": end_perf - start_perf,
+                    "start_timestamp": start_timestamp,
+                    "end_timestamp": end_timestamp,
+                },
+                fh,
+                indent=0,
+            )

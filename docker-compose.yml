@@ -30,6 +30,10 @@ services:
       - ../config/exporter.env
     volumes:
       - ../waveform-export:/waveform-export
+      # because we're launching through cron in the container, which starts
+      # processes with a clean environment, also mount in the config file so
+      # it can be read in by snakemake later
+      - ../config/exporter.env:/config/exporter.env:ro
     restart: unless-stopped
   waveform-hasher:
     build:

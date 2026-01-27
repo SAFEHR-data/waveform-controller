@@ -8,8 +8,8 @@ from locations import WAVEFORM_ORIGINAL_CSV
 def create_file_name(
     source_stream_id: str, observation_time: datetime, csn: str, units: str
 ) -> str:
-    """Create a unique file name based on the patient contact serial number
-    (csn) the date, and the source system."""
+    """Create a unique file name based on the patient contact serial number (csn) the
+    date, and the source system."""
     datestring = observation_time.strftime("%Y-%m-%d")
     units = units.replace("/", "p")
     units = units.replace("%", "percent")
@@ -26,8 +26,7 @@ def write_frame(
     csn: str,
     mrn: str,
 ) -> bool:
-    """Appends a frame of waveform data to a csv file (creates file if it
-    doesn't exist.
+    """Appends a frame of waveform data to a csv file (creates file if it doesn't exist.
 
     :return: True if write was successful.
     """
