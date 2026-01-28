@@ -7,8 +7,11 @@ from locations import WAVEFORM_ORIGINAL_CSV, make_file_name, FILE_STEM_PATTERN
 
 
 def create_file_name(
-        source_variable_id: str, source_channel_id: str,
-        observation_time: datetime, csn: str, units: str
+    source_variable_id: str,
+    source_channel_id: str,
+    observation_time: datetime,
+    csn: str,
+    units: str,
 ) -> str:
     """Create a unique file name based on the patient contact serial number (csn) the
     date, and the source system."""

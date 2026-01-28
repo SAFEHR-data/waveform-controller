@@ -12,7 +12,9 @@ from datetime import datetime, timezone
         ("%", "11", "3", "2025-01-01.12345678.11.3.percent.csv"),
     ],
 )
-def test_create_file_name_handles_units(units, variable_id, channel_id, expected_filename, tmp_path):
+def test_create_file_name_handles_units(
+    units, variable_id, channel_id, expected_filename, tmp_path
+):
     observationTime = datetime(2025, 1, 1, 10, 10, 10, tzinfo=timezone.utc)
     csn = "12345678"
 
