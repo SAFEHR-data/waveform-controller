@@ -81,7 +81,7 @@ Top-level Snakemake run logs, including:
 Unlike data files, the timestamps in these file names are when the snakemake
 pipeline was invoked.
 
-### `{date}.{hashed_csn}.{stream_id}.{units}.log`
+### `{date}.{hashed_csn}.{variable_id}.{channel_id}.{units}.log`
 Job-level log for the `csv_to_parquet` rule. Contains:
 - CSV -> parquet info
 - pseudonymisation steps
@@ -90,12 +90,12 @@ Job-level log for the `csv_to_parquet` rule. Contains:
 
 Produced under `waveform-export/ftps-logs/`.
 
-### `{date}.{hashed_csn}.{stream_id}.{units}.ftps.log`
+### `{date}.{hashed_csn}.{variable_id}.{channel_id}.{units}.ftps.log`
 Job-level FTPS upload logs. Useful for:
 - connection/authentication errors
 - transfer failures
 
-### `{date}.{hashed_csn}.{stream_id}.{units}.ftps.uploaded.json`
+### `{date}.{hashed_csn}.{variable_id}.{channel_id}.{units}.ftps.uploaded.json`
 Upload marker file (aka sentinel) written after a successful transfer.
 It contains, in JSON format:
 - `uploaded_file` (the uploaded file path)
