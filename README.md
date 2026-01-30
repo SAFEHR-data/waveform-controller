@@ -63,8 +63,10 @@ cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
 ```
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
 
-#### fill in config files
+#### Fill in config files
 Fill out the config, as appropriate.
+
+See [azure and hasher setup](docs/azure_hashing.md) to configure the hasher.
 
 When updating to a new version of this code, you should diff the .EXAMPLE file against its live version,
 eg. by running `vimdiff waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env`.
@@ -86,7 +88,7 @@ mkdir waveform-export
 
 #### run it!
 
-Build and start the controller and exporter with docker
+Build and start the hasher, controller and exporter with docker.
 ```
 cd waveform-controller
 docker compose build
