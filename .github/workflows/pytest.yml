@@ -47,7 +47,6 @@ jobs:
           cp config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env
           cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
           cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
-          ls -laR ..
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
