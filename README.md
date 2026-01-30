@@ -112,6 +112,9 @@ docker compose build
 docker compose up -d
 ```
 
+For more complex deployment scenarios, such as where there is existing data you need to preserve,
+see the more advanced [deployment doc](docs/deployment.md)
+
 ## 3 Check if it's working
 
 Running the controller will save (to `../waveform-export`) waveform messages
