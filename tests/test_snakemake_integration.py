@@ -1,5 +1,7 @@
 import json
 import os
+import re
+
 import pyarrow.parquet as pq
 import subprocess
 import time
@@ -35,12 +37,8 @@ def build_exporter_image():
     repo_root = Path(__file__).resolve().parents[1]
     compose_file = repo_root / "docker-compose.yml"
     result = _run_compose(compose_file, ["build", "waveform-exporter"], cwd=repo_root)
-    if result.returncode != 0:
-        pytest.fail(
-            "docker compose build waveform-exporter failed\n"
-            f"stdout:\n{result.stdout}\n"
-            f"stderr:\n{result.stderr}"
-        )
+    print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
+    result.check_returncode()
 
 
 def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
@@ -102,12 +100,9 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     for ol in outer_logs:
         print(f"Log file {ol}:")
         print(ol.read_text())
-    if result.returncode != 0:
-        pytest.fail(
-            "docker compose run waveform-exporter failed\n"
-            f"stdout:\n{result.stdout}\n"
-            f"stderr:\n{result.stderr}"
-        )
+    # print all output then raise if there was an error
+    print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
+    result.check_returncode()
 
     expected_hashed_csn = do_hash("csn", csn)
     original_parquet_path = (
@@ -133,18 +128,37 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
         entry.get("csn") == csn and entry.get("hashed_csn") == expected_hashed_csn
         for entry in hash_lookup
     )
-    _check_parquet(pseudon_path, allow_no_secrets=True)
-    _check_parquet(original_parquet_path, allow_no_secrets=False)
+    _check_parquets(original_parquet_path, pseudon_path)
 
 
-def _check_parquet(parquet_path: Path, allow_no_secrets=True):
-    parquet_file = pq.ParquetFile(parquet_path)
-    column_names = parquet_file.schema_arrow.names
+def _check_parquets(original_parquet_path: Path, pseudon_parquet_path: Path):
+    # columns where we expect the values to differ due to pseudonymisation
+    COLUMN_EXPECT_DIFFERENT = ["csn", "mrn", "location"]
+    orig_parquet_file = pq.ParquetFile(original_parquet_path)
+    pseudon_parquet_file = pq.ParquetFile(pseudon_parquet_path)
+    column_names = orig_parquet_file.schema_arrow.names
     assert column_names == EXPECTED_COLUMN_NAMES
-    reader = parquet_file.read()
+    assert column_names == pseudon_parquet_file.schema_arrow.names
+    orig_reader = orig_parquet_file.read()
+    pseudon_reader = pseudon_parquet_file.read()
     for column_name in column_names:
-        all_values = reader[column_name].combine_chunks()
-        if allow_no_secrets:
-            assert not any(
-                ("SECRET" in str(v) for v in all_values)
-            ), f"{all_values} in column {column_name} contains SECRET string"
+        orig_all_values = orig_reader[column_name].combine_chunks()
+        pseudon_all_values = pseudon_reader[column_name].combine_chunks()
+        # pseudonymised contains no secrets
+        assert not any(
+            ("SECRET" in str(v) for v in pseudon_all_values)
+        ), f"{pseudon_all_values} in column {column_name} contains SECRET string"
+        if column_name not in COLUMN_EXPECT_DIFFERENT:
+            # no pseudon expected, should be identical
+            assert orig_all_values == pseudon_all_values
+        else:
+            # pseudon expected, check that it looks like a hash
+            assert all(
+                # will need lengthening when we use real hashes!
+                re.match(r"[a-f0-9]{8}$", str(v))
+                for v in pseudon_all_values
+            ), f"{pseudon_all_values} in column {column_name} does not appear to be a hash"
+            # orig, all sensitive values contain SECRET
+            assert all(
+                "SECRET" in str(v) for v in orig_all_values
+            ), f"{orig_all_values} in column {column_name} contains SECRET string"
