@@ -47,6 +47,7 @@ jobs:
           cp config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env
           cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
           cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
+          ls -laR ..
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -54,8 +55,7 @@ jobs:
       - name: Build exporter image (cached)
         uses: docker/bake-action@v6
         with:
-          workdir: waveform-controller
-          files: docker-compose.yml
+          files: waveform-controller/docker-compose.yml
           targets: waveform-exporter
           set: |
             *.cache-from=type=gha
