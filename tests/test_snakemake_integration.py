@@ -10,12 +10,25 @@ import pytest
 from src.pseudon.hashing import do_hash
 
 
-def _run_compose(compose_file: Path, args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+def _run_compose(
+    compose_file: Path, args: list[str], cwd: Path
+) -> subprocess.CompletedProcess:
     cmd = ["docker", "compose", "-f", str(compose_file), *args]
     return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True)
 
-EXPECTED_COLUMN_NAMES = ["csn", "mrn", "source_variable_id", "source_channel_id", "units",
-                         "sampling_rate", "timestamp", "location", "values"]
+
+EXPECTED_COLUMN_NAMES = [
+    "csn",
+    "mrn",
+    "source_variable_id",
+    "source_channel_id",
+    "units",
+    "sampling_rate",
+    "timestamp",
+    "location",
+    "values",
+]
+
 
 @pytest.fixture(scope="session", autouse=True)
 def build_exporter_image():
@@ -45,13 +58,11 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
 
     original_csv_dir = tmp_path / "original-csv"
     original_csv_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = (
-        original_csv_dir / f"{date}.{csn}.{variable_id}.{channel_id}.{units}.csv"
-    )
+    csv_path = original_csv_dir / f"{date}.{csn}.{variable_id}.{channel_id}.{units}.csv"
     csv_path.write_text(
         ",".join(EXPECTED_COLUMN_NAMES) + "\n"
-        f"{csn},{mrn},{variable_id},{channel_id},{units},100,1769795156.0,{loc},\"[1.0,2.0]\"\n"
-        f"{csn},{mrn},{variable_id},{channel_id},{units},100,1769795157.0,{loc},\"[3.0, 4.0]\"\n"
+        f'{csn},{mrn},{variable_id},{channel_id},{units},100,1769795156.0,{loc},"[1.0,2.0]"\n'
+        f'{csn},{mrn},{variable_id},{channel_id},{units},100,1769795157.0,{loc},"[3.0, 4.0]"\n'
     )
     # The test input CSV file needs to be old enough so that snakemake doesn't skip it
     old_time = time.time() - (10 * 60)
@@ -93,9 +104,9 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
 
     expected_hashed_csn = do_hash("csn", csn)
     original_parquet_path = (
-            tmp_path
-            / "original-parquet"
-            / f"{date}.{csn}.{variable_id}.{channel_id}.{units}.parquet"
+        tmp_path
+        / "original-parquet"
+        / f"{date}.{csn}.{variable_id}.{channel_id}.{units}.parquet"
     )
     pseudon_path = (
         tmp_path
@@ -127,5 +138,6 @@ def _check_parquet(parquet_path: Path, allow_no_secrets=True):
     for column_name in column_names:
         all_values = reader[column_name].combine_chunks()
         if allow_no_secrets:
-            assert not any(('SECRET' in str(v) for v in all_values)), \
-                f"{all_values} contains SECRET string"
+            assert not any(
+                ("SECRET" in str(v) for v in all_values)
+            ), f"{all_values} in column {column_name} contains SECRET string"
