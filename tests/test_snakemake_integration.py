@@ -47,6 +47,13 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     repo_root = Path(__file__).resolve().parents[1]
     compose_file = repo_root / "docker-compose.yml"
 
+    exporter_config_file = repo_root.parent / "config" / "exporter.env"
+    # This is mainly needed for Github actions because the docker-compose file requires the
+    # config file to exist, but be gentle because this might also be your development area!
+    # Empty is fine, actual config is passed through on the command line later.
+    exporter_config_file.parent.mkdir(exist_ok=True)
+    exporter_config_file.touch()
+
     date = "2025-01-01"
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later!
     csn = "SECRET_CSN_1234"
