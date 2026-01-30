@@ -40,6 +40,10 @@ jobs:
         working-directory: waveform-controller
         run: uv pip install '.[dev]'
 
+      - name: Build exporter image
+        working-directory: waveform-controller
+        run: docker compose -f docker-compose.yml build waveform-exporter
+
       - name: Run the tests
         working-directory: waveform-controller
         run: uv run pytest tests
