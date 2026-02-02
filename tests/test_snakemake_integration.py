@@ -50,6 +50,7 @@ def build_exporter_image():
 @dataclass
 class TestFileDescription:
     date: str
+    start_timestamp: float
     csn: str
     mrn: str
     location: str
@@ -92,7 +93,7 @@ class TestFileDescription:
         byte_hash = self.get_stable_hash().digest()[:4]
         return int.from_bytes(byte_hash)
 
-    def generate_data(self, vals_per_row: int):
+    def generate_data(self, vals_per_row: int) -> list[list[Decimal]]:
         if self._test_values is None:
             seed = self.get_stable_seed()
             rng = random.Random(seed)
@@ -111,7 +112,7 @@ class TestFileDescription:
         return self._test_values
 
 
-def _make_test_input_csv(tmp_path, t: TestFileDescription):
+def _make_test_input_csv(tmp_path, t: TestFileDescription) -> list[list[Decimal]]:
     original_csv_dir = tmp_path / "original-csv"
     original_csv_dir.mkdir(parents=True, exist_ok=True)
     csv_path = original_csv_dir / t.get_orig_csv()
@@ -120,7 +121,7 @@ def _make_test_input_csv(tmp_path, t: TestFileDescription):
     test_data = t.generate_data(vals_per_row)
     with open(csv_path, "w") as f:
         f.write(",".join(EXPECTED_COLUMN_NAMES) + "\n")
-        start_time = time.time() - 15 * 60
+        start_time = t.start_timestamp
         row_time = start_time
         for td in test_data:
             row_values_str = ", ".join(str(v) for v in td)
@@ -135,12 +136,14 @@ def _make_test_input_csv(tmp_path, t: TestFileDescription):
 
 
 def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
+    # ARRANGE
     repo_root = Path(__file__).resolve().parents[1]
     compose_file = repo_root / "docker-compose.yml"
 
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
     file1 = TestFileDescription(
         "2025-01-01",
+        1735740780.0,
         "SECRET_CSN_1234",
         "SECRET_MRN_12345",
         "SECRET_LOCATION_123",
@@ -150,12 +153,81 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
         "uV",
         5,
     )
-    test_data1 = _make_test_input_csv(tmp_path, file1)
-    # file2 = _make_test_input_csv(tmp_path)
-    # file3 = _make_test_input_csv(tmp_path)
+    # same day, same CSN, earlier time
+    file2 = TestFileDescription(
+        "2025-01-01",
+        1735740765.0,
+        "SECRET_CSN_1234",
+        "SECRET_MRN_12345",
+        "SECRET_LOCATION_123",
+        "27",
+        "noCh",
+        50,
+        "uV",
+        2,
+    )
+    # same day, different CSN
+    file3 = TestFileDescription(
+        "2025-01-01",
+        1735740783.0,
+        "SECRET_CSN_1235",
+        "SECRET_MRN_12346",
+        "SECRET_LOCATION_123",
+        "27",
+        "noCh",
+        50,
+        "uV",
+        4,
+    )
+    # new day, first CSN again
+    file4 = TestFileDescription(
+        "2025-01-02",
+        1735801965.0,
+        "SECRET_CSN_1234",
+        "SECRET_MRN_12345",
+        "SECRET_LOCATION_123",
+        "27",
+        "noCh",
+        50,
+        "uV",
+        5,
+    )
+    test_data_files = []
+    for f in [file1, file2, file3, file4]:
+        test_data = _make_test_input_csv(tmp_path, f)
+        test_data_files.append((f, test_data))
+    expected_hash_summaries = {
+        "2025-01-01": [
+            {
+                "csn": file1.csn,
+                "hashed_csn": file1.get_hashed_csn(),
+                "min_timestamp": file2.start_timestamp,
+                "max_timestamp": (
+                    file1.start_timestamp + file1.num_rows - 1
+                ),  # one sec per row
+            },
+            {
+                "csn": file3.csn,
+                "hashed_csn": file3.get_hashed_csn(),
+                "min_timestamp": file3.start_timestamp,
+                "max_timestamp": (
+                    file3.start_timestamp + file3.num_rows - 1
+                ),  # one sec per row
+            },
+        ],
+        "2025-01-02": [
+            {
+                "csn": file4.csn,
+                "hashed_csn": file4.get_hashed_csn(),
+                "min_timestamp": file4.start_timestamp,
+                "max_timestamp": (
+                    file4.start_timestamp + file4.num_rows - 1
+                ),  # one sec per row
+            }
+        ],
+    }
 
-    # file1.channel_id, file1.csn, file1.date, file1.units, file1.variable_id
-
+    # ACT
     compose_args = [
         "run",
         "--rm",
@@ -187,24 +259,34 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
     result.check_returncode()
 
-    expected_hashed_csn = file1.get_hashed_csn()
-    original_parquet_path = tmp_path / "original-parquet" / file1.get_orig_parquet()
-    pseudon_path = tmp_path / "pseudonymised" / file1.get_pseudon_parquet()
-    hash_lookup_path = tmp_path / "hash-lookups" / file1.get_hashes()
+    # ASSERT
+    for filename, expected_data in test_data_files:
+        original_parquet_path = (
+            tmp_path / "original-parquet" / filename.get_orig_parquet()
+        )
+        pseudon_path = tmp_path / "pseudonymised" / filename.get_pseudon_parquet()
 
-    assert original_parquet_path.exists()
-    assert pseudon_path.exists()
-    assert hash_lookup_path.exists()
+        assert original_parquet_path.exists()
+        assert pseudon_path.exists()
 
+        _compare_original_parquet_to_expected(original_parquet_path, expected_data)
+        _compare_parquets(expected_data, original_parquet_path, pseudon_path)
+
+    # Check hash summaries: one per day, not per input file
     # inspect our CSN -> hashed_csn lookup file
-    hash_lookup = json.loads(hash_lookup_path.read_text())
-    assert isinstance(hash_lookup, list)
-    assert any(
-        entry.get("csn") == file1.csn and entry.get("hashed_csn") == expected_hashed_csn
-        for entry in hash_lookup
-    )
-    _compare_original_parquet_to_expected(original_parquet_path, test_data1)
-    _compare_parquets(test_data1, original_parquet_path, pseudon_path)
+    for datestr, expected_summary in expected_hash_summaries.items():
+        expected_path = tmp_path / "hash-lookups" / f"{datestr}.hashes.json"
+        actual_hash_lookup_data = json.loads(expected_path.read_text())
+        assert isinstance(actual_hash_lookup_data, list)
+        # sort order to match expected
+        actual_hash_lookup_data.sort(key=lambda x: x["csn"])
+        assert expected_summary == actual_hash_lookup_data
+
+    # check no extraneous files
+    assert 4 == len(list((tmp_path / "original-csv").iterdir()))
+    assert 4 == len(list((tmp_path / "original-parquet").iterdir()))
+    assert 4 == len(list((tmp_path / "pseudonymised").iterdir()))
+    assert 2 == len(list((tmp_path / "hash-lookups").iterdir()))
 
 
 def _compare_original_parquet_to_expected(original_parquet: Path, expected_test_values):
