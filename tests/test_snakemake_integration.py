@@ -1,13 +1,19 @@
 import json
+import math
 import os
 import re
+from dataclasses import dataclass
+from decimal import Decimal
+import random
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import subprocess
 import time
 from pathlib import Path
 
 import pytest
+from stablehash import stablehash
 
 from src.pseudon.hashing import do_hash
 
@@ -41,30 +47,114 @@ def build_exporter_image():
     result.check_returncode()
 
 
+@dataclass
+class TestFileDescription:
+    date: str
+    csn: str
+    mrn: str
+    location: str
+    variable_id: str
+    channel_id: str
+    sampling_rate: int
+    units: str
+    num_rows: int
+    _test_values: list = None
+
+    def get_hashed_csn(self):
+        return do_hash("csn", self.csn)
+
+    def get_orig_csv(self):
+        return f"{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.csv"
+
+    def get_orig_parquet(self):
+        return f"{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
+
+    def get_pseudon_parquet(self):
+        return f"{self.date}.{self.get_hashed_csn()}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
+
+    def get_hashes(self):
+        return f"{self.date}.hashes.json"
+
+    def get_stable_hash(self):
+        """To aid in generating different but repeatable test data for each file."""
+        return stablehash(
+            (
+                self.date,
+                self.csn,
+                self.mrn,
+                self.location,
+                self.variable_id,
+                self.channel_id,
+            )
+        )
+
+    def get_stable_seed(self):
+        byte_hash = self.get_stable_hash().digest()[:4]
+        return int.from_bytes(byte_hash)
+
+    def generate_data(self, vals_per_row: int):
+        if self._test_values is None:
+            seed = self.get_stable_seed()
+            rng = random.Random(seed)
+            base_ampl = rng.normalvariate(1, 0.2)
+            base_offset = rng.normalvariate(0, 0.2)
+            self._test_values = []
+            for row_num in range(self.num_rows):
+                values_row = [
+                    Decimal.from_float(
+                        base_ampl * math.sin(base_offset + row_num * vals_per_row + i)
+                    ).quantize(Decimal("1.0000"))
+                    for i in range(vals_per_row)
+                ]
+                self._test_values.append(values_row)
+        # return as string but keep the numerical representation for comparison to parquet later
+        return self._test_values
+
+
+def _make_test_input_csv(tmp_path, t: TestFileDescription):
+    original_csv_dir = tmp_path / "original-csv"
+    original_csv_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = original_csv_dir / t.get_orig_csv()
+    secs_per_row = 1
+    vals_per_row = t.sampling_rate * secs_per_row
+    test_data = t.generate_data(vals_per_row)
+    with open(csv_path, "w") as f:
+        f.write(",".join(EXPECTED_COLUMN_NAMES) + "\n")
+        start_time = time.time() - 15 * 60
+        row_time = start_time
+        for td in test_data:
+            row_values_str = ", ".join(str(v) for v in td)
+            f.write(
+                f'{t.csn},{t.mrn},{t.variable_id},{t.channel_id},{t.units},{t.sampling_rate},{row_time},{t.location},"[{row_values_str}]"\n'
+            )
+            row_time += secs_per_row
+    # The test input CSV file needs to be old enough so that snakemake doesn't skip it
+    old_time = time.time() - (10 * 60)
+    os.utime(csv_path, (old_time, old_time))
+    return test_data
+
+
 def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     repo_root = Path(__file__).resolve().parents[1]
     compose_file = repo_root / "docker-compose.yml"
 
-    date = "2025-01-01"
-    # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later!
-    csn = "SECRET_CSN_1234"
-    mrn = "SECRET_MRN_12345"
-    loc = "SECRET_LOCATION_123"
-    variable_id = "11"
-    channel_id = "3"
-    units = "uV"
-
-    original_csv_dir = tmp_path / "original-csv"
-    original_csv_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = original_csv_dir / f"{date}.{csn}.{variable_id}.{channel_id}.{units}.csv"
-    csv_path.write_text(
-        ",".join(EXPECTED_COLUMN_NAMES) + "\n"
-        f'{csn},{mrn},{variable_id},{channel_id},{units},100,1769795156.0,{loc},"[1.0,2.0]"\n'
-        f'{csn},{mrn},{variable_id},{channel_id},{units},100,1769795157.0,{loc},"[3.0, 4.0]"\n'
+    # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
+    file1 = TestFileDescription(
+        "2025-01-01",
+        "SECRET_CSN_1234",
+        "SECRET_MRN_12345",
+        "SECRET_LOCATION_123",
+        "11",
+        "3",
+        100,
+        "uV",
+        5,
     )
-    # The test input CSV file needs to be old enough so that snakemake doesn't skip it
-    old_time = time.time() - (10 * 60)
-    os.utime(csv_path, (old_time, old_time))
+    test_data1 = _make_test_input_csv(tmp_path, file1)
+    # file2 = _make_test_input_csv(tmp_path)
+    # file3 = _make_test_input_csv(tmp_path)
+
+    # file1.channel_id, file1.csn, file1.date, file1.units, file1.variable_id
 
     compose_args = [
         "run",
@@ -97,34 +187,38 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
     result.check_returncode()
 
-    expected_hashed_csn = do_hash("csn", csn)
-    original_parquet_path = (
-        tmp_path
-        / "original-parquet"
-        / f"{date}.{csn}.{variable_id}.{channel_id}.{units}.parquet"
-    )
-    pseudon_path = (
-        tmp_path
-        / "pseudonymised"
-        / f"{date}.{expected_hashed_csn}.{variable_id}.{channel_id}.{units}.parquet"
-    )
-    hash_lookup_path = tmp_path / "hash-lookups" / f"{date}.hashes.json"
+    expected_hashed_csn = file1.get_hashed_csn()
+    original_parquet_path = tmp_path / "original-parquet" / file1.get_orig_parquet()
+    pseudon_path = tmp_path / "pseudonymised" / file1.get_pseudon_parquet()
+    hash_lookup_path = tmp_path / "hash-lookups" / file1.get_hashes()
 
     assert original_parquet_path.exists()
     assert pseudon_path.exists()
     assert hash_lookup_path.exists()
 
-    # does our CSN -> hashed_csn
+    # inspect our CSN -> hashed_csn lookup file
     hash_lookup = json.loads(hash_lookup_path.read_text())
     assert isinstance(hash_lookup, list)
     assert any(
-        entry.get("csn") == csn and entry.get("hashed_csn") == expected_hashed_csn
+        entry.get("csn") == file1.csn and entry.get("hashed_csn") == expected_hashed_csn
         for entry in hash_lookup
     )
-    _check_parquets(original_parquet_path, pseudon_path)
+    _compare_original_parquet_to_expected(original_parquet_path, test_data1)
+    _compare_parquets(test_data1, original_parquet_path, pseudon_path)
 
 
-def _check_parquets(original_parquet_path: Path, pseudon_parquet_path: Path):
+def _compare_original_parquet_to_expected(original_parquet: Path, expected_test_values):
+    # CSV should always match original parquet
+    orig_parquet_file = pq.ParquetFile(original_parquet)
+    orig_reader = orig_parquet_file.read()
+    orig_all_values = orig_reader["values"].combine_chunks()
+    expected_pa = pa.array(expected_test_values, type=orig_all_values.type)
+    assert orig_all_values == expected_pa
+
+
+def _compare_parquets(
+    expected_test_values, original_parquet_path: Path, pseudon_parquet_path: Path
+):
     # columns where we expect the values to differ due to pseudonymisation
     COLUMN_EXPECT_DIFFERENT = ["csn", "mrn", "location"]
     orig_parquet_file = pq.ParquetFile(original_parquet_path)
