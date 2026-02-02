@@ -137,8 +137,6 @@ def _make_test_input_csv(tmp_path, t: TestFileDescription) -> list[list[Decimal]
 
 def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     # ARRANGE
-    repo_root = Path(__file__).resolve().parents[1]
-    compose_file = repo_root / "docker-compose.yml"
 
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
     file1 = TestFileDescription(
@@ -194,8 +192,9 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     )
     test_data_files = []
     for f in [file1, file2, file3, file4]:
-        test_data = _make_test_input_csv(tmp_path, f)
-        test_data_files.append((f, test_data))
+        test_data_values = _make_test_input_csv(tmp_path, f)
+        test_data_files.append((f, test_data_values))
+
     expected_hash_summaries = {
         "2025-01-01": [
             {
@@ -228,6 +227,42 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     }
 
     # ACT
+    run_snakemake(tmp_path)
+
+    # ASSERT (data files)
+    for filename, expected_data in test_data_files:
+        original_parquet_path = (
+            tmp_path / "original-parquet" / filename.get_orig_parquet()
+        )
+        pseudon_path = tmp_path / "pseudonymised" / filename.get_pseudon_parquet()
+
+        assert original_parquet_path.exists()
+        assert pseudon_path.exists()
+
+        _compare_original_parquet_to_expected(original_parquet_path, expected_data)
+        _compare_parquets(expected_data, original_parquet_path, pseudon_path)
+
+    # ASSERT (hash summaries)
+    # Hash summaries are one per day, not per input file
+    for datestr, expected_summary in expected_hash_summaries.items():
+        expected_path = tmp_path / "hash-lookups" / f"{datestr}.hashes.json"
+        actual_hash_lookup_data = json.loads(expected_path.read_text())
+        assert isinstance(actual_hash_lookup_data, list)
+        # sort order to match expected
+        actual_hash_lookup_data.sort(key=lambda x: x["csn"])
+        assert expected_summary == actual_hash_lookup_data
+
+    # check no extraneous files
+    assert 4 == len(list((tmp_path / "original-csv").iterdir()))
+    assert 4 == len(list((tmp_path / "original-parquet").iterdir()))
+    assert 4 == len(list((tmp_path / "pseudonymised").iterdir()))
+    assert 2 == len(list((tmp_path / "hash-lookups").iterdir()))
+
+
+def run_snakemake(tmp_path):
+    repo_root = Path(__file__).resolve().parents[1]
+    compose_file = repo_root / "docker-compose.yml"
+
     compose_args = [
         "run",
         "--rm",
@@ -258,35 +293,6 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     # print all output then raise if there was an error
     print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
     result.check_returncode()
-
-    # ASSERT
-    for filename, expected_data in test_data_files:
-        original_parquet_path = (
-            tmp_path / "original-parquet" / filename.get_orig_parquet()
-        )
-        pseudon_path = tmp_path / "pseudonymised" / filename.get_pseudon_parquet()
-
-        assert original_parquet_path.exists()
-        assert pseudon_path.exists()
-
-        _compare_original_parquet_to_expected(original_parquet_path, expected_data)
-        _compare_parquets(expected_data, original_parquet_path, pseudon_path)
-
-    # Check hash summaries: one per day, not per input file
-    # inspect our CSN -> hashed_csn lookup file
-    for datestr, expected_summary in expected_hash_summaries.items():
-        expected_path = tmp_path / "hash-lookups" / f"{datestr}.hashes.json"
-        actual_hash_lookup_data = json.loads(expected_path.read_text())
-        assert isinstance(actual_hash_lookup_data, list)
-        # sort order to match expected
-        actual_hash_lookup_data.sort(key=lambda x: x["csn"])
-        assert expected_summary == actual_hash_lookup_data
-
-    # check no extraneous files
-    assert 4 == len(list((tmp_path / "original-csv").iterdir()))
-    assert 4 == len(list((tmp_path / "original-parquet").iterdir()))
-    assert 4 == len(list((tmp_path / "pseudonymised").iterdir()))
-    assert 2 == len(list((tmp_path / "hash-lookups").iterdir()))
 
 
 def _compare_original_parquet_to_expected(original_parquet: Path, expected_test_values):
