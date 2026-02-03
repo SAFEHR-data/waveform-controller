@@ -167,12 +167,23 @@ def background_hasher():
         [
             "up",
             "-d",
-            # Azure envs should be there already
+            # Assume Azure envs will come from config file
             "waveform-hasher",
         ],
         cwd=REPO_ROOT,
     ).check_returncode()
     yield
+    # print hasher logs whether failed or not
+    result = _run_compose(
+        COMPOSE_FILE,
+        [
+            "logs",
+            "--no-color",
+            "waveform-hasher",
+        ],
+        cwd=REPO_ROOT,
+    )
+    print(f"waveform-hasher logs:\n{result.stdout}\n{result.stderr}")
     _run_compose(
         COMPOSE_FILE,
         [
