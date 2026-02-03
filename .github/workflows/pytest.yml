@@ -77,3 +77,8 @@ jobs:
       - name: Run the tests
         working-directory: waveform-controller
         run: uv run pytest tests
+
+      - name: Dump waveform-hasher logs on failure
+        if: failure()
+        working-directory: waveform-controller
+        run: docker compose -p pytest -f docker-compose.yml logs waveform-hasher
