@@ -18,7 +18,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=9.0.2"]
+dev = [
+    "pytest>=9.0.2",
+    "stablehash==0.3.0",
+]
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"

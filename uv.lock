@@ -2125,13 +2125,14 @@ dependencies = [
     { name = "pika" },
     { name = "pre-commit" },
     { name = "psycopg2-binary" },
+    { name = "requests" },
     { name = "snakemake" },
-    { name = "stablehash" },
 ]
 
 [package.optional-dependencies]
 dev = [
     { name = "pytest" },
+    { name = "stablehash" },
 ]
 
 [package.metadata]
@@ -2142,8 +2143,9 @@ requires-dist = [
     { name = "pre-commit", specifier = ">=4.5.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
+    { name = "requests", specifier = "==2.32.3" },
     { name = "snakemake", specifier = "==9.14.5" },
-    { name = "stablehash", specifier = "==0.3.0" },
+    { name = "stablehash", marker = "extra == 'dev'", specifier = "==0.3.0" },
 ]
 
 [[package]]
