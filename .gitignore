@@ -17,3 +17,6 @@ wheels/
 
 # snakemake tracking files
 .snakemake
+
+# pytest tmp paths
+.pytest_tmp
