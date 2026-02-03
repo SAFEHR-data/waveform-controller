@@ -81,4 +81,11 @@ jobs:
       - name: Dump waveform-hasher logs on failure
         if: failure()
         working-directory: waveform-controller
-        run: docker compose -p pytest -f docker-compose.yml logs waveform-hasher
+        run: |
+          echo FOO1
+          docker ps -a
+          echo FOO2
+          docker ps -q | while read c; do echo "$c"; docker logs "$c"; done
+          echo FOO3
+          docker compose -p pytest -f docker-compose.yml logs waveform-hasher
+          echo FOO4
