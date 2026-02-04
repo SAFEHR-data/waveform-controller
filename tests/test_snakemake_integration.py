@@ -54,6 +54,7 @@ def build_required_images():
 
 @dataclass
 class TestFileDescription:
+    __test__ = False
     date: str
     start_timestamp: float
     csn: str
