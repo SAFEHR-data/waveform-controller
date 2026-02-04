@@ -1,7 +1,7 @@
 select observation_datetime as datetime,
 value_as_real,
 unit,
-value_as_text,
+value_as_text,£.
 comment,
 vo.visit_observation_type_id ,
 (select display_name
