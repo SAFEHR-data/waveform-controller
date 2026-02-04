@@ -32,3 +32,5 @@ get_from_env("FTPS_PASSWORD")
 
 get_from_env("HASHER_API_HOSTNAME")
 get_from_env("HASHER_API_PORT")
+
+get_from_env("INSTANCE_NAME", default_value="UNKNOWN-INSTANCE")

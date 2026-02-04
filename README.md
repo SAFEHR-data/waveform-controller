@@ -70,11 +70,22 @@ cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
 
 #### Fill in config files
-Fill out the config, as appropriate.
+The config files contain documentation in comments, but some are further discussed here.
 
 See [azure and hasher setup](docs/azure_hashing.md) to configure the hasher.
 
-When updating to a new version of this code, you should diff the .EXAMPLE file against its live version,
+`INSTANCE_NAME` in `exporter.env` should always be set to a non-empty, globally unique value. This is used to
+identify the instance of the exporter when the files are uploaded to the FTPS server.
+This avoids production data being mixed up with synthetic data.
+The `INSTANCE_NAME` isn't used as part of file paths on the system where the instance is running: it's assumed
+that only one instance will be using each filesystem location, so this would be unnecessary. It's only used on the
+FTPS server.
+Example names:
+* `yourname-dev` for your dev instance
+* `production` for production ONLY
+
+
+When deploying a new version of this code, you should diff the .EXAMPLE file against its live version,
 eg. by running `vimdiff waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env`.
 
 This checks if any config options have been added/removed from the .EXAMPLE, and thus should be
