@@ -7,9 +7,6 @@ set -euo pipefail
 # The snakemake output goes to its own log file as defined here.
 # These files will end up on Windows so be careful about disallowed characters in the names.
 date_str=$(date --utc +"%Y%m%dT%H%M%S")
-SNAKEMAKE_CORES="${SNAKEMAKE_CORES:-1}"
-# for temporarily making the pipeline not go all the way
-SNAKEMAKE_RULE_UNTIL="${SNAKEMAKE_RULE_UNTIL:-all}"
 
 # log file for the overall snakemake run (as opposed to per-job logs,
 # which are defined in the snakefile)
@@ -22,6 +19,10 @@ touch "$outer_log_file"
 set -a
 source /config/exporter.env
 set +a
+# Now that we have loaded config file, apply default values
+SNAKEMAKE_CORES="${SNAKEMAKE_CORES:-1}"
+# For telling the pipeline not to go all the way
+SNAKEMAKE_RULE_UNTIL="${SNAKEMAKE_RULE_UNTIL:-all}"
 set +e
 snakemake --snakefile /app/src/pipeline/Snakefile \
   --cores "$SNAKEMAKE_CORES" \
