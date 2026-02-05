@@ -18,7 +18,7 @@ the key vault.
 The hasher needs to be given the service principal details so it can create/obtain the
 secrets. It also needs to know the name of the manually-created secret (see next section for more details).
 
-See [hasher example config](config.EXAMPLE/hasher.env.EXAMPLE) for detailed description of required env vars.
+See [hasher example config](../config.EXAMPLE/hasher.env.EXAMPLE) for detailed description of required env vars.
 
 # Manual Azure config
 
