@@ -76,21 +76,18 @@ class InputCsvFile:
             units=self.units
         )
     
-    def get_subs_dict(self):
-        return self._subs_dict
-
     def get_original_csv_path(self) -> Path:
-        return Path(make_file_name(str(CSV_PATTERN), self.get_subs_dict()))
+        return Path(make_file_name(str(CSV_PATTERN), self._subs_dict))
 
     def get_original_parquet_path(self) -> Path:
-        return Path(make_file_name(str(ORIGINAL_PARQUET_PATTERN), self.get_subs_dict()))
+        return Path(make_file_name(str(ORIGINAL_PARQUET_PATTERN), self._subs_dict))
 
     def get_pseudonymised_parquet_path(self) -> Path:
-        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self.get_subs_dict())
+        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self._subs_dict)
         return WAVEFORM_PSEUDONYMISED_PARQUET / f"{final_stem}.parquet"
 
     def get_ftps_uploaded_file(self) -> Path:
-        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self.get_subs_dict())
+        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self._subs_dict)
         return WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
 
     def get_daily_hash_lookup(self) -> Path:
@@ -234,8 +231,11 @@ def pseudonymised_parquet_files_for_date(wc):
 
 rule make_daily_hash_lookup:
     input:
-        # we declare the pseud parquets here to make the DAG work, but
-        # then later we "cheat" and use InputCsvFile objects to get the original CSN
+        # Because we don't declare the original parquets in the output of csv_to_parquet,
+        # they are not present in the Snakemake dependency DAG. Therefore, we can't reference them
+        # here either.
+        # We lie to Snakemake that the input is the pseudon parquets, but then we use InputCsvFile
+        # to determine the actual input file (the original parquets).
         pseudonymised_parquets = pseudonymised_parquet_files_for_date
     output:
         hash_lookup_json = WAVEFORM_HASH_LOOKUPS / "{date}.hashes.json"

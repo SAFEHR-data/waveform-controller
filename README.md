@@ -1,6 +1,12 @@
 A controller for reading waveform data from a rabbitmq queue and processing it.
 
 # Running the Code
+
+## Pre-reqs
+
+Up-to-date Docker and Docker Compose. We have seen config bugs when using old Docker Compose versions,
+such as that packaged with recent Ubuntu LTS. Docker Compose v5.0.1 and Docker 29.1.5 are known to work.
+
 ## 1 Install and deploy EMAP
 Follow the emap development [instructions](https://github.com/SAFEHR-data/emap/blob/main/docs/dev/core.md#deploying-a-live-version "Instructions for deploying a live version of EMAP") configure and deploy a version of EMAP. To run a local version you'll need to set
 
