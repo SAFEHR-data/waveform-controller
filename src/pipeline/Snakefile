@@ -231,8 +231,11 @@ def pseudonymised_parquet_files_for_date(wc):
 
 rule make_daily_hash_lookup:
     input:
-        # we declare the pseud parquets here to make the DAG work, but
-        # then later we "cheat" and use InputCsvFile objects to get the original CSN
+        # Because we don't declare the original parquets in the output of csv_to_parquet,
+        # they are not present in the Snakemake dependency DAG. Therefore, we can't reference them
+        # here either.
+        # We lie to Snakemake that the input is the pseudon parquets, but then we use InputCsvFile
+        # to determine the actual input file (the original parquets).
         pseudonymised_parquets = pseudonymised_parquet_files_for_date
     output:
         hash_lookup_json = WAVEFORM_HASH_LOOKUPS / "{date}.hashes.json"
