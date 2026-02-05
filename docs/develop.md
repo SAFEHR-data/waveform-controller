@@ -38,9 +38,8 @@ ls .git/hooks | grep -v .sample # should now see a new pre-commit hook
 At the moment, we're using:
 
 - [`ruff` and `ruff-format`](https://docs.astral.sh/ruff/) for python code formatting,
-- [nbstribout](https://github.com/kynan/nbstripout) to clear notebook output.
-- A small selection of line-endings fixers.
-
+- [`mypy`](https://mypy.readthedocs.io/en/stable/) for static type checking,
+- [`docformatter`](https://github.com/PyCQA/docformatter) to format docstrings.
 If you want to run them individually you can do so with:
 
 ```
@@ -59,7 +58,7 @@ to use that for consistency).
 ### Problems with pre-commit?
 
 If the linters are flagging false positives, you can remove them or comment them
-out in [the configuration](./.pre-commit-config.yaml). If you've accidentally
+out in [the configuration](../.pre-commit-config.yaml). If you've accidentally
 commited something that is failing the linting step in CI, you can fix this
 with:
 
@@ -85,12 +84,7 @@ From the repo root, install the software and its deps:
 ```
 uv pip install -e '.[dev]'
 ```
-
-
-### API tests
-
-from PROJECT_ROOT directory
-
-```shell script
-./tools/run-tests.sh
+Run tests with:
+```
+pytest
 ```
