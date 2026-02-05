@@ -30,3 +30,4 @@ snakemake --snakefile /app/src/pipeline/Snakefile \
 ret_code=$?
 set -e
 echo "$0: snakemake exited with return code $ret_code"
+exit $ret_code

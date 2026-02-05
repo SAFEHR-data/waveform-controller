@@ -40,6 +40,26 @@ jobs:
         working-directory: waveform-controller
         run: uv pip install '.[dev]'
 
+      - name: Prepare config env files for compose
+        working-directory: waveform-controller
+        run: |
+          mkdir -p ../config
+          cp config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env
+          cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
+          cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build exporter image (cached)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: waveform-controller/Dockerfile
+          target: waveform_exporter
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Run the tests
         working-directory: waveform-controller
         run: uv run pytest tests
