@@ -7,7 +7,7 @@ Azure key vaults for dev and prod already exist. Ask your team-mates how to find
 For each, there is an Azure service principal (aka. machine account) that can read/write secrets to
 the key vault.
 
-> ![CAUTION]
+> [!CAUTION]
 > Never use the production key vault credentials anywhere except on the production machines!
 > The dev key vault credentials can be used for testing on your dev machine, testing
 > on GitHub Actions, etc, but should still be kept safe.
