@@ -86,5 +86,5 @@ uv pip install -e '.[dev]'
 ```
 Run tests with:
 ```
-pyest
+pytest
 ```
