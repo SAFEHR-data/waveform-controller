@@ -15,13 +15,12 @@ from pathlib import Path
 import pytest
 from stablehash import stablehash
 
-from src.pseudon.hashing import do_hash
-
 
 def _run_compose(
     compose_file: Path, args: list[str], cwd: Path
 ) -> subprocess.CompletedProcess:
-    cmd = ["docker", "compose", "-f", str(compose_file), *args]
+    # set project name so as not to interfere with images/containers the user might already have
+    cmd = ["docker", "compose", "-p", "pytest", "-f", str(compose_file), *args]
     return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True)
 
 
@@ -37,18 +36,25 @@ EXPECTED_COLUMN_NAMES = [
     "values",
 ]
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
+
 
 @pytest.fixture(scope="session", autouse=True)
-def build_exporter_image():
-    repo_root = Path(__file__).resolve().parents[1]
-    compose_file = repo_root / "docker-compose.yml"
-    result = _run_compose(compose_file, ["build", "waveform-exporter"], cwd=repo_root)
-    print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
-    result.check_returncode()
+def build_required_images():
+    for image in ["waveform-exporter", "waveform-hasher"]:
+        print(f"BUILDING {image}:")
+        result = _run_compose(COMPOSE_FILE, ["build", image], cwd=REPO_ROOT)
+        print(
+            f"{image} build output:\nstdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}END {image} build output [rc={result.returncode}]"
+        )
+        result.check_returncode()
 
 
 @dataclass
 class TestFileDescription:
+    __test__ = False
     date: str
     start_timestamp: float
     csn: str
@@ -62,7 +68,26 @@ class TestFileDescription:
     _test_values: list = None
 
     def get_hashed_csn(self):
-        return do_hash("csn", self.csn)
+        """This test runs outside of a docker container and the hasher doesn't expose a
+        fixed port, so is somewhat hard to find.
+
+        Easier to just hard code the CSNs since we have a limited set of input CSNs. We
+        are defining expected values here; the test exporter will still use the test
+        hasher to generate the actual values.
+        """
+        static_lookup = {
+            # These hashes are not secrets, they're keyed hashes of the input values
+            "SECRET_CSN_1234": "253d32c67e0d5aa4cdc7e9fc8442710dee8338c92abc3b905ab4b2f03194fc7e",  # pragma: allowlist secret
+            "SECRET_CSN_1235": "ea2fda353f54926ae9d43fbc0ff4253912c250a137e9bd38bed860abacfe03ef",  # pragma: allowlist secret
+        }
+        try:
+            return static_lookup[self.csn]
+        except KeyError as e:
+            # See develop.md "Manual hash lookup" if you need to add value
+            raise KeyError(
+                f"Unknown CSN '{self.csn}' passed to static get_hashed_csn(). "
+                f"You may need to manually add the known hash for your CSN. See docs for details."
+            ) from e
 
     def get_orig_csv(self):
         return f"{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.csv"
@@ -135,7 +160,42 @@ def _make_test_input_csv(tmp_path, t: TestFileDescription) -> list[list[Decimal]
     return test_data
 
 
-def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
+@pytest.fixture(scope="function")
+def background_hasher():
+    # run hasher in background
+    _run_compose(
+        COMPOSE_FILE,
+        [
+            "up",
+            "-d",
+            # Assume Azure envs will come from config file
+            "waveform-hasher",
+        ],
+        cwd=REPO_ROOT,
+    ).check_returncode()
+    yield
+    # print hasher logs whether failed or not
+    result = _run_compose(
+        COMPOSE_FILE,
+        [
+            "logs",
+            "--no-color",
+            "waveform-hasher",
+        ],
+        cwd=REPO_ROOT,
+    )
+    print(f"waveform-hasher logs:\n{result.stdout}\n{result.stderr}")
+    _run_compose(
+        COMPOSE_FILE,
+        [
+            "down",
+            "waveform-hasher",
+        ],
+        cwd=REPO_ROOT,
+    ).check_returncode()
+
+
+def test_snakemake_pipeline(tmp_path: Path, background_hasher):
     # ARRANGE
 
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
@@ -227,7 +287,7 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     }
 
     # ACT
-    run_snakemake(tmp_path)
+    _run_snakemake(tmp_path)
 
     # ASSERT (data files)
     for filename, expected_data in test_data_files:
@@ -259,10 +319,8 @@ def test_snakemake_pipeline_runs_via_exporter_wrapper(tmp_path: Path):
     assert 2 == len(list((tmp_path / "hash-lookups").iterdir()))
 
 
-def run_snakemake(tmp_path):
-    repo_root = Path(__file__).resolve().parents[1]
-    compose_file = repo_root / "docker-compose.yml"
-
+def _run_snakemake(tmp_path):
+    # run system under test (exporter container) in foreground
     compose_args = [
         "run",
         "--rm",
@@ -278,9 +336,9 @@ def run_snakemake(tmp_path):
         "waveform-exporter",
     ]
     result = _run_compose(
-        compose_file,
+        COMPOSE_FILE,
         compose_args,
-        cwd=repo_root,
+        cwd=REPO_ROOT,
     )
     # for convenience print the snakemake log files if they exist (on success or error)
     outer_logs_dir = tmp_path / "snakemake-logs"
@@ -329,9 +387,7 @@ def _compare_parquets(
         else:
             # pseudon expected, check that it looks like a hash
             assert all(
-                # will need lengthening when we use real hashes!
-                re.match(r"[a-f0-9]{8}$", str(v))
-                for v in pseudon_all_values
+                re.match(r"[a-f0-9]{64}$", str(v)) for v in pseudon_all_values
             ), f"{pseudon_all_values} in column {column_name} does not appear to be a hash"
             # orig, all sensitive values contain SECRET
             assert all(

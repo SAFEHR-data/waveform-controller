@@ -33,7 +33,8 @@ repos:
           [
             "pandas-stubs",
             "types-psycopg2",
-            "types-pika"
+            "types-pika",
+            "types-requests",
           ]
         files: src/
   # a collection of sanity checks: check for merge conflicts, check the end of
