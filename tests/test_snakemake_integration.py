@@ -424,3 +424,7 @@ def _assert_parquet_footer_metadata(
         assert (
             expected_val == actual_metadata_dict[expected_key]
         ), f"{parquet_path} value mismatch"
+    # no metadata items contain identifiers
+    for actual_key, actual_val in actual_metadata_dict.items():
+        assert "SECRET" not in actual_key
+        assert "SECRET" not in actual_val
