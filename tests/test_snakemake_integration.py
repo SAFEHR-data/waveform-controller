@@ -15,6 +15,8 @@ from pathlib import Path
 import pytest
 from stablehash import stablehash
 
+from pseudon.pseudon import WAVEFORM_EXPORTER_METADATA_KEY
+
 
 def _run_compose(
     compose_file: Path, args: list[str], cwd: Path
@@ -301,6 +303,10 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
 
         _compare_original_parquet_to_expected(original_parquet_path, expected_data)
         _compare_parquets(expected_data, original_parquet_path, pseudon_path)
+        # check metadata showing the instance name is in both parquet files
+        expected_data = {"instance_name": "pytest"}
+        _assert_parquet_footer_metadata(pseudon_path, expected_data)
+        _assert_parquet_footer_metadata(original_parquet_path, expected_data)
 
     # ASSERT (hash summaries)
     # Hash summaries are one per day, not per input file
@@ -320,6 +326,18 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
 
 
 def _run_snakemake(tmp_path):
+    # Config is a right pain. The exporter has a blank environment because it's launched by cron, so
+    # nothing passed in as an env var will be seen.
+    # It works around this in normal use by reading env vars only from the bind-mounted exporter.env file.
+    # So to use a different config during test, we must override that file with a special version
+    # that we create here.
+    tmp_exporter_env_path = tmp_path / "config/exporter.env"
+    tmp_exporter_env_path.parent.mkdir(exist_ok=True)
+    tmp_exporter_env_path.write_text(
+        "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups\n"
+        "SNAKEMAKE_CORES=1\n"
+        "INSTANCE_NAME=pytest\n"
+    )
     # run system under test (exporter container) in foreground
     compose_args = [
         "run",
@@ -327,12 +345,11 @@ def _run_snakemake(tmp_path):
         # we override the volume defined in the compose file to be the pytest tmp path
         "-v",
         f"{tmp_path}:/waveform-export",
+        # feed in our special config file
+        "-v",
+        f"{tmp_exporter_env_path}:/config/exporter.env:ro",
         "--entrypoint",
         "/app/exporter-scripts/scheduled-script.sh",
-        "-e",
-        "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups",
-        "-e",
-        "SNAKEMAKE_CORES=1",
         "waveform-exporter",
     ]
     result = _run_compose(
@@ -393,3 +410,17 @@ def _compare_parquets(
             assert all(
                 "SECRET" in str(v) for v in orig_all_values
             ), f"{orig_all_values} in column {column_name} contains SECRET string"
+
+
+def _assert_parquet_footer_metadata(
+    parquet_path: Path, expected_values: dict[str, str]
+):
+    parquet_file = pq.ParquetFile(parquet_path)
+    footer_metadata: dict[bytes, bytes] = parquet_file.metadata.metadata
+    actual_metadata_dict = json.loads(
+        footer_metadata[WAVEFORM_EXPORTER_METADATA_KEY].decode("utf-8")
+    )
+    for expected_key, expected_val in expected_values.items():
+        assert (
+            expected_val == actual_metadata_dict[expected_key]
+        ), f"{parquet_path} value mismatch"

@@ -1,12 +1,15 @@
 import argparse
 import functools
+import json
 import logging
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import settings
 
 from locations import (
     WAVEFORM_ORIGINAL_PARQUET,
@@ -113,6 +116,11 @@ def csv_to_parquets(
     )
     table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
+    # mark the parquet files themselves as production or not.
+    our_metadata = {"instance_name": settings.INSTANCE_NAME}
+
+    table = add_metadata_to_table(table, our_metadata)
+
     original_parquet_path = WAVEFORM_ORIGINAL_PARQUET / (csv_path.stem + ".parquet")
     pq.write_table(
         table,
@@ -129,6 +137,9 @@ def csv_to_parquets(
 
     df = pseudonymise_relevant_columns(df)
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
+
+    # Use same metadata for pseudon, must not contain identifiers!
+    pseudon_table = add_metadata_to_table(pseudon_table, our_metadata)
 
     hashed_path = Path(
         str(PSEUDONYMISED_PARQUET_PATTERN).format(
@@ -150,6 +161,21 @@ def csv_to_parquets(
     logger.info(
         "Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path
     )
+
+
+# The convention seems to be that you put all your data as JSON under a single key
+WAVEFORM_EXPORTER_METADATA_KEY = b"waveform_exporter"
+
+
+def add_metadata_to_table(
+    pseudon_table: pa.Table, our_metadata: dict[str, Any]
+) -> pa.Table:
+    existing_metadata = pseudon_table.schema.metadata or {}
+    json_byte_string = json.dumps(our_metadata).encode("utf-8")
+    pseudon_table = pseudon_table.replace_schema_metadata(
+        {**existing_metadata, WAVEFORM_EXPORTER_METADATA_KEY: json_byte_string}
+    )
+    return pseudon_table
 
 
 SAFE_COLUMNS = [
