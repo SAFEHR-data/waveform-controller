@@ -60,10 +60,8 @@ jobs:
             echo "AZURE_KEY_VAULT_NAME=${AZURE_KEY_VAULT_NAME}"
             echo "AZURE_KEY_VAULT_SECRET_NAME=${AZURE_KEY_VAULT_SECRET_NAME}"
           } >> ../config/hasher.env
-          # Don't attempt to upload FTPS from GHA
-          {
-            echo "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups"
-          } >> ../config/exporter.env
+          
+          # exporter config is generated from wtthin pytest so no need to do it here
 
       - name: Run the tests
         working-directory: waveform-controller
