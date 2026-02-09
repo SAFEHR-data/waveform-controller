@@ -12,9 +12,8 @@ import pyarrow.parquet as pq
 import settings
 
 from locations import (
-    WAVEFORM_ORIGINAL_PARQUET,
-    WAVEFORM_PSEUDONYMISED_PARQUET,
     CSV_PATTERN,
+    ORIGINAL_PARQUET_PATTERN,
     PSEUDONYMISED_PARQUET_PATTERN,
 )
 from .hashing import do_hash
@@ -63,12 +62,21 @@ def csv_to_parquets(
             units=units,
         )
     )
-    # it's in the csv_path, but at least nowhere else!
+    original_parquet_path = Path(
+        str(ORIGINAL_PARQUET_PATTERN).format(
+            date=date_str,
+            csn=original_csn,
+            variable_id=variable_id,
+            channel_id=channel_id,
+            units=units,
+        )
+    )
+    # it's in the csv_path and original_parquet_path, but at least nowhere else!
     del original_csn
 
     logger.info("Turning CSV %s to parquets", csv_path)
-    WAVEFORM_ORIGINAL_PARQUET.mkdir(parents=False, exist_ok=True)
-    WAVEFORM_PSEUDONYMISED_PARQUET.mkdir(parents=False, exist_ok=True)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    original_parquet_path.parent.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(
         str(csv_path),
         dtype={
@@ -121,7 +129,6 @@ def csv_to_parquets(
 
     table = add_waveform_metadata_to_table(table, our_metadata)
 
-    original_parquet_path = WAVEFORM_ORIGINAL_PARQUET / (csv_path.stem + ".parquet")
     pq.write_table(
         table,
         str(original_parquet_path),
