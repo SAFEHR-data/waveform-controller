@@ -163,17 +163,21 @@ def csv_to_parquets(
     )
 
 
-# The convention seems to be that you put all your data as JSON under a single key
-WAVEFORM_EXPORTER_METADATA_KEY = b"waveform_exporter"
-
-
 def add_waveform_metadata_to_table(
     existing_table: pa.Table, metadata: dict[str, Any]
 ) -> pa.Table:
+    """Replace our metadata in its entirety, leaving untouched metadata we didn't
+    set."""
+
+    # Parquet footer metadata is a series of (byte string) key-value pairs.
+    # Other users of metadata (eg. pandas) convert their metadata to JSON and store it under
+    # a single key (a namespace, effectively), so we'll do the same under our own key.
+    waveform_exporter_metadata_key = b"waveform_exporter"
+
     existing_metadata = existing_table.schema.metadata or {}
     json_byte_string = json.dumps(metadata).encode("utf-8")
     existing_table = existing_table.replace_schema_metadata(
-        {**existing_metadata, WAVEFORM_EXPORTER_METADATA_KEY: json_byte_string}
+        {**existing_metadata, waveform_exporter_metadata_key: json_byte_string}
     )
     return existing_table
 

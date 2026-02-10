@@ -15,8 +15,6 @@ from pathlib import Path
 import pytest
 from stablehash import stablehash
 
-from pseudon.pseudon import WAVEFORM_EXPORTER_METADATA_KEY
-
 
 def _run_compose(
     compose_file: Path, args: list[str], cwd: Path
@@ -417,8 +415,10 @@ def _assert_parquet_footer_metadata(
 ):
     parquet_file = pq.ParquetFile(parquet_path)
     footer_metadata: dict[bytes, bytes] = parquet_file.metadata.metadata
+    # top-level key that separates our metadata from pre-existing metadata from eg pandas
+    expected_metadata_key = b"waveform_metadata"
     actual_metadata_dict = json.loads(
-        footer_metadata[WAVEFORM_EXPORTER_METADATA_KEY].decode("utf-8")
+        footer_metadata[expected_metadata_key].decode("utf-8")
     )
     for expected_key, expected_val in expected_values.items():
         assert (
