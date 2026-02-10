@@ -303,8 +303,8 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         _compare_parquets(expected_data, original_parquet_path, pseudon_path)
         # check metadata showing the instance name is in both parquet files
         expected_data = {"instance_name": "pytest"}
-        _assert_parquet_footer_metadata(pseudon_path, expected_data)
-        _assert_parquet_footer_metadata(original_parquet_path, expected_data)
+        _assert_parquet_footer_waveform_metadata(pseudon_path, expected_data)
+        _assert_parquet_footer_waveform_metadata(original_parquet_path, expected_data)
 
     # ASSERT (hash summaries)
     # Hash summaries are one per day, not per input file
@@ -410,7 +410,7 @@ def _compare_parquets(
             ), f"{orig_all_values} in column {column_name} contains SECRET string"
 
 
-def _assert_parquet_footer_metadata(
+def _assert_parquet_footer_waveform_metadata(
     parquet_path: Path, expected_values: dict[str, str]
 ):
     parquet_file = pq.ParquetFile(parquet_path)
