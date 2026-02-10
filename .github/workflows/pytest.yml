@@ -61,7 +61,7 @@ jobs:
             echo "AZURE_KEY_VAULT_SECRET_NAME=${AZURE_KEY_VAULT_SECRET_NAME}"
           } >> ../config/hasher.env
           
-          # exporter config is generated from wtthin pytest so no need to do it here
+          # exporter config can't be done here because test_snakemake_integration.py wires in its own config file
 
       - name: Run the tests
         working-directory: waveform-controller
