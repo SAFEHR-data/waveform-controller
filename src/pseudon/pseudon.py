@@ -119,7 +119,7 @@ def csv_to_parquets(
     # mark the parquet files themselves as production or not.
     our_metadata = {"instance_name": settings.INSTANCE_NAME}
 
-    table = add_metadata_to_table(table, our_metadata)
+    table = add_waveform_metadata_to_table(table, our_metadata)
 
     original_parquet_path = WAVEFORM_ORIGINAL_PARQUET / (csv_path.stem + ".parquet")
     pq.write_table(
@@ -139,7 +139,7 @@ def csv_to_parquets(
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
     # Use same metadata for pseudon, must not contain identifiers!
-    pseudon_table = add_metadata_to_table(pseudon_table, our_metadata)
+    pseudon_table = add_waveform_metadata_to_table(pseudon_table, our_metadata)
 
     hashed_path = Path(
         str(PSEUDONYMISED_PARQUET_PATTERN).format(
@@ -167,15 +167,15 @@ def csv_to_parquets(
 WAVEFORM_EXPORTER_METADATA_KEY = b"waveform_exporter"
 
 
-def add_metadata_to_table(
-    pseudon_table: pa.Table, our_metadata: dict[str, Any]
+def add_waveform_metadata_to_table(
+    existing_table: pa.Table, metadata: dict[str, Any]
 ) -> pa.Table:
-    existing_metadata = pseudon_table.schema.metadata or {}
-    json_byte_string = json.dumps(our_metadata).encode("utf-8")
-    pseudon_table = pseudon_table.replace_schema_metadata(
+    existing_metadata = existing_table.schema.metadata or {}
+    json_byte_string = json.dumps(metadata).encode("utf-8")
+    existing_table = existing_table.replace_schema_metadata(
         {**existing_metadata, WAVEFORM_EXPORTER_METADATA_KEY: json_byte_string}
     )
-    return pseudon_table
+    return existing_table
 
 
 SAFE_COLUMNS = [
