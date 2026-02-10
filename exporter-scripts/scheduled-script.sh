@@ -13,7 +13,6 @@ date_str=$(date --utc +"%Y%m%dT%H%M%S")
 outer_log_file="/waveform-export/snakemake-logs/snakemake-outer-log${date_str}.log"
 # snakemake has not run yet so will not create the log dir; do it manually
 mkdir -p "$(dirname "$outer_log_file")"
-echo "$0: invoking snakemake, cores=$SNAKEMAKE_CORES, logging to $outer_log_file"
 touch "$outer_log_file"
 # bring in envs from file because cron gives us a clean environment
 set -a
@@ -21,6 +20,7 @@ source /config/exporter.env
 set +a
 # Now that we have loaded config file, apply default values
 SNAKEMAKE_CORES="${SNAKEMAKE_CORES:-1}"
+echo "$0: invoking snakemake, cores=$SNAKEMAKE_CORES, logging to $outer_log_file"
 # For telling the pipeline not to go all the way
 SNAKEMAKE_RULE_UNTIL="${SNAKEMAKE_RULE_UNTIL:-all}"
 set +e

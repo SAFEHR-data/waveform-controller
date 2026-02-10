@@ -300,7 +300,13 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         assert pseudon_path.exists()
 
         _compare_original_parquet_to_expected(original_parquet_path, expected_data)
-        _compare_parquets(expected_data, original_parquet_path, pseudon_path)
+        _compare_parquets(original_parquet_path, pseudon_path)
+        # check metadata showing the instance name is in both parquet files
+        expected_metadata = {"instance_name": "pytest"}
+        _assert_parquet_footer_waveform_metadata(pseudon_path, expected_metadata)
+        _assert_parquet_footer_waveform_metadata(
+            original_parquet_path, expected_metadata
+        )
 
     # ASSERT (hash summaries)
     # Hash summaries are one per day, not per input file
@@ -320,6 +326,18 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
 
 
 def _run_snakemake(tmp_path):
+    # Config is a right pain. The exporter has a blank environment because it's launched by cron, so
+    # nothing passed in as an env var will be seen.
+    # It works around this in normal use by reading env vars only from the bind-mounted exporter.env file.
+    # So to use a different config during test, we must override that file with a special version
+    # that we create here.
+    tmp_exporter_env_path = tmp_path / "config/exporter.env"
+    tmp_exporter_env_path.parent.mkdir(exist_ok=True)
+    tmp_exporter_env_path.write_text(
+        "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups\n"
+        "SNAKEMAKE_CORES=1\n"
+        "INSTANCE_NAME=pytest\n"
+    )
     # run system under test (exporter container) in foreground
     compose_args = [
         "run",
@@ -327,12 +345,11 @@ def _run_snakemake(tmp_path):
         # we override the volume defined in the compose file to be the pytest tmp path
         "-v",
         f"{tmp_path}:/waveform-export",
+        # feed in our special config file
+        "-v",
+        f"{tmp_exporter_env_path}:/config/exporter.env:ro",
         "--entrypoint",
         "/app/exporter-scripts/scheduled-script.sh",
-        "-e",
-        "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups",
-        "-e",
-        "SNAKEMAKE_CORES=1",
         "waveform-exporter",
     ]
     result = _run_compose(
@@ -362,9 +379,7 @@ def _compare_original_parquet_to_expected(original_parquet: Path, expected_test_
     assert orig_all_values == expected_pa
 
 
-def _compare_parquets(
-    expected_test_values, original_parquet_path: Path, pseudon_parquet_path: Path
-):
+def _compare_parquets(original_parquet_path: Path, pseudon_parquet_path: Path):
     # columns where we expect the values to differ due to pseudonymisation
     COLUMN_EXPECT_DIFFERENT = ["csn", "mrn", "location"]
     orig_parquet_file = pq.ParquetFile(original_parquet_path)
@@ -393,3 +408,23 @@ def _compare_parquets(
             assert all(
                 "SECRET" in str(v) for v in orig_all_values
             ), f"{orig_all_values} in column {column_name} contains SECRET string"
+
+
+def _assert_parquet_footer_waveform_metadata(
+    parquet_path: Path, expected_values: dict[str, str]
+):
+    parquet_file = pq.ParquetFile(parquet_path)
+    footer_metadata: dict[bytes, bytes] = parquet_file.metadata.metadata
+    # top-level key that separates our metadata from pre-existing metadata from eg pandas
+    expected_metadata_key = b"waveform_exporter"
+    actual_metadata_dict = json.loads(
+        footer_metadata[expected_metadata_key].decode("utf-8")
+    )
+    for expected_key, expected_val in expected_values.items():
+        assert (
+            expected_val == actual_metadata_dict[expected_key]
+        ), f"{parquet_path} value mismatch"
+    # no metadata items contain identifiers
+    for actual_key, actual_val in actual_metadata_dict.items():
+        assert "SECRET" not in actual_key
+        assert "SECRET" not in actual_val
