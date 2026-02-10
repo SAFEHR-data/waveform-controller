@@ -416,7 +416,7 @@ def _assert_parquet_footer_metadata(
     parquet_file = pq.ParquetFile(parquet_path)
     footer_metadata: dict[bytes, bytes] = parquet_file.metadata.metadata
     # top-level key that separates our metadata from pre-existing metadata from eg pandas
-    expected_metadata_key = b"waveform_metadata"
+    expected_metadata_key = b"waveform_exporter"
     actual_metadata_dict = json.loads(
         footer_metadata[expected_metadata_key].decode("utf-8")
     )
