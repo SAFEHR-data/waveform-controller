@@ -300,11 +300,11 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         assert pseudon_path.exists()
 
         _compare_original_parquet_to_expected(original_parquet_path, expected_data)
-        _compare_parquets(expected_data, original_parquet_path, pseudon_path)
+        _compare_parquets(original_parquet_path, pseudon_path)
         # check metadata showing the instance name is in both parquet files
-        expected_data = {"instance_name": "pytest"}
-        _assert_parquet_footer_waveform_metadata(pseudon_path, expected_data)
-        _assert_parquet_footer_waveform_metadata(original_parquet_path, expected_data)
+        expected_metadata = {"instance_name": "pytest"}
+        _assert_parquet_footer_waveform_metadata(pseudon_path, expected_metadata)
+        _assert_parquet_footer_waveform_metadata(original_parquet_path, expected_metadata)
 
     # ASSERT (hash summaries)
     # Hash summaries are one per day, not per input file
@@ -378,7 +378,7 @@ def _compare_original_parquet_to_expected(original_parquet: Path, expected_test_
 
 
 def _compare_parquets(
-    expected_test_values, original_parquet_path: Path, pseudon_parquet_path: Path
+    original_parquet_path: Path, pseudon_parquet_path: Path
 ):
     # columns where we expect the values to differ due to pseudonymisation
     COLUMN_EXPECT_DIFFERENT = ["csn", "mrn", "location"]
