@@ -337,6 +337,7 @@ def _run_snakemake(tmp_path):
         "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups\n"
         "SNAKEMAKE_CORES=1\n"
         "INSTANCE_NAME=pytest\n"
+        "CSV_AGE_THRESHOLD_MINUTES=5\n"
     )
     # run system under test (exporter container) in foreground
     compose_args = [

@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -41,7 +42,7 @@ def hash_csn(csn: str) -> str:
 # protect against very out of order data though)
 # Also note that snakemake can detect and re-run if the file is subsequently updated,
 # so being very cautious here may not be necessary.
-CSV_WAIT_TIME = timedelta(minutes=5)
+CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MINUTES']))
 
 # The problem here is that snakemake works "backwards" in that you have to define which
 # files you want to be produced, yet we don't know what output files we need until the
@@ -116,12 +117,12 @@ def determine_eventual_outputs():
             print(f"Skipping file with unmatched CSN: {orig_file}")
             continue
         file_age = get_file_age(orig_file)
-        if file_age < CSV_WAIT_TIME:
+        if file_age < CSV_AGE_THRESHOLD_MINUTES:
             print(f"File too new (age={file_age}): {orig_file}")
             continue
         _all_outputs.append(input_file_obj)
     after = time.perf_counter()
-    print(f"Calculated output files using newness threshold {CSV_WAIT_TIME} in {after - before} seconds")
+    print(f"Snakemake [pid={os.getpid()}]: Determined {len(_all_outputs)} output files using newness threshold {CSV_AGE_THRESHOLD_MINUTES} in {after - before} seconds")
     return _all_outputs, _hash_to_csn
 
 

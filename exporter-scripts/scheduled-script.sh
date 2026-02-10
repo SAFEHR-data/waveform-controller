@@ -27,6 +27,7 @@ set +e
 snakemake --snakefile /app/src/pipeline/Snakefile \
   --cores "$SNAKEMAKE_CORES" \
   --until "$SNAKEMAKE_RULE_UNTIL" \
+  --config CSV_AGE_THRESHOLD_MINUTES="${CSV_AGE_THRESHOLD_MINUTES}" \
   >> "$outer_log_file" 2>&1
 ret_code=$?
 set -e
