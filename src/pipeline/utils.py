@@ -73,10 +73,10 @@ def get_file_age(file_path: Path) -> timedelta:
     return now_utc - file_time_utc
 
 
-def determine_eventual_outputs(csv_pattern: str, csv_wait_time: timedelta):
+def determine_eventual_outputs(csv_wait_time: timedelta):
     # Discover all CSVs using the basic file name pattern
     before = time.perf_counter()
-    all_wc = glob_wildcards(csv_pattern)
+    all_wc = glob_wildcards(CSV_PATTERN)
 
     # all_wc.date, all_wc.csn, all_wc.streamId, all_wc.units are parallel lists
     # e.g. all_wc.csn[0] corresponds to all_wc.date[0], etc.
