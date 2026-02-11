@@ -74,7 +74,12 @@ def get_file_age(file_path: Path) -> timedelta:
     return now_utc - file_time_utc
 
 
-def determine_eventual_outputs(csv_wait_time: timedelta):
+def determine_eventual_outputs(csv_wait_time: timedelta, process_yesterday_only: bool):
+    """
+    :param timedelta: only process files older than this
+    :param process_one_day_only: if true we only allow files from yesterday
+    :returns: A list of InputCsvFile and a dictionary containing the hash and csn values.
+    """
     # Discover all CSVs using the basic file name pattern
     before = time.perf_counter()
     all_wc = glob_wildcards(CSV_PATTERN)
@@ -93,10 +98,11 @@ def determine_eventual_outputs(csv_wait_time: timedelta):
     ):
         input_file_obj = InputCsvFile(date, csn, variable_id, channel_id, units)
         orig_file = input_file_obj.get_original_csv_path()
-        ## uncomment to sort by file date
-        #        if date == '2025-01-01':
-        #            print(f"Skipping file with bad date: {orig_file}")
-        #            continue
+        if process_yesterday_only:
+            yesterday = datetime.now() - timedelta(1)
+            if date != datetime.strftime(yesterday, "%Y-%m-%d"):
+                print(f"Skipping file not from yesterday {orig_file}")
+                continue
         if csn == "unmatched_csn":
             print(f"Skipping file with unmatched CSN: {orig_file}")
             continue
