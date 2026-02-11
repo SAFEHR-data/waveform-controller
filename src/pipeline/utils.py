@@ -12,6 +12,7 @@ from locations import (
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_PSEUDONYMISED_PARQUET,
     WAVEFORM_FTPS_LOGS,
+    HASH_LOOKUP_JSON,
     ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN_HASHED,
     CSV_PATTERN,
@@ -63,7 +64,7 @@ class InputCsvFile:
         return WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
 
     def get_daily_hash_lookup(self) -> Path:
-        return WAVEFORM_HASH_LOOKUPS / f"{self.date}.hashes.json"
+        return Path(make_file_name(str(HASH_LOOKUP_JSON), self._subs_dict))
 
 
 def get_file_age(file_path: Path) -> timedelta:
