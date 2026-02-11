@@ -10,10 +10,10 @@ import locations
 @pytest.mark.parametrize(
     "units, variable_id, channel_id, expected_filename",
     [
-        ("uV", "11", "3", "2025-01-01.12345678.11.3.uV.csv"),
-        ("uV", "12", None, "2025-01-01.12345678.12.noCh.uV.csv"),
-        ("mL/s", "11", "3", "2025-01-01.12345678.11.3.mLps.csv"),
-        ("%", "11", "3", "2025-01-01.12345678.11.3.percent.csv"),
+        ("uV", "11", "3", "2025-01-01/2025-01-01.12345678.11.3.uV.csv"),
+        ("uV", "12", None, "2025-01-01/2025-01-01.12345678.12.noCh.uV.csv"),
+        ("mL/s", "11", "3", "2025-01-01/2025-01-01.12345678.11.3.mLps.csv"),
+        ("%", "11", "3", "2025-01-01/2025-01-01.12345678.11.3.percent.csv"),
     ],
 )
 def test_create_file_name_handles_units(

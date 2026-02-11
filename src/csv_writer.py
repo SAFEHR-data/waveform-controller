@@ -46,11 +46,10 @@ def write_frame(
     """
     observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
-    WAVEFORM_ORIGINAL_CSV.mkdir(exist_ok=True, parents=False)
-
     filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
         source_variable_id, source_channel_id, observation_datetime, csn, units
     )
+    filename.parent.mkdir(exist_ok=True, parents=True)
 
     # write header if is new file
     if not filename.exists():

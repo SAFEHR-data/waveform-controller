@@ -90,16 +90,16 @@ class TestFileDescription:
             ) from e
 
     def get_orig_csv(self):
-        return f"{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.csv"
+        return f"{self.date}/{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.csv"
 
     def get_orig_parquet(self):
-        return f"{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
+        return f"{self.date}/{self.date}.{self.csn}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
 
     def get_pseudon_parquet(self):
-        return f"{self.date}.{self.get_hashed_csn()}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
+        return f"{self.date}/{self.date}.{self.get_hashed_csn()}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
 
     def get_hashes(self):
-        return f"{self.date}.hashes.json"
+        return f"{self.date}/{self.date}.hashes.json"
 
     def get_stable_hash(self):
         """To aid in generating different but repeatable test data for each file."""
@@ -139,8 +139,8 @@ class TestFileDescription:
 
 def _make_test_input_csv(tmp_path, t: TestFileDescription) -> list[list[Decimal]]:
     original_csv_dir = tmp_path / "original-csv"
-    original_csv_dir.mkdir(parents=True, exist_ok=True)
     csv_path = original_csv_dir / t.get_orig_csv()
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
     secs_per_row = 1
     vals_per_row = t.sampling_rate * secs_per_row
     test_data = t.generate_data(vals_per_row)
@@ -311,7 +311,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
     # ASSERT (hash summaries)
     # Hash summaries are one per day, not per input file
     for datestr, expected_summary in expected_hash_summaries.items():
-        expected_path = tmp_path / "hash-lookups" / f"{datestr}.hashes.json"
+        expected_path = tmp_path / "hash-lookups" / datestr / f"{datestr}.hashes.json"
         actual_hash_lookup_data = json.loads(expected_path.read_text())
         assert isinstance(actual_hash_lookup_data, list)
         # sort order to match expected
@@ -319,10 +319,27 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         assert expected_summary == actual_hash_lookup_data
 
     # check no extraneous files
-    assert 4 == len(list((tmp_path / "original-csv").iterdir()))
-    assert 4 == len(list((tmp_path / "original-parquet").iterdir()))
-    assert 4 == len(list((tmp_path / "pseudonymised").iterdir()))
-    assert 2 == len(list((tmp_path / "hash-lookups").iterdir()))
+    expected_file_counts = {"2025-01-01": 3, "2025-01-02": 1}
+    _assert_date_partitioned_files(tmp_path / "original-csv", expected_file_counts)
+    _assert_date_partitioned_files(tmp_path / "original-parquet", expected_file_counts)
+    _assert_date_partitioned_files(tmp_path / "pseudonymised", expected_file_counts)
+    _assert_date_partitioned_files(
+        tmp_path / "hash-lookups", {"2025-01-01": 1, "2025-01-02": 1}
+    )
+
+
+def _assert_date_partitioned_files(
+    base_dir: Path, expected_file_counts: dict[str, int]
+):
+    base_dir_items = list(base_dir.iterdir())
+    # no files directly in the base dir, all are subdirs
+    assert not any(i.is_file() for i in base_dir_items)
+    assert len(base_dir_items) == len(expected_file_counts)
+    for date_str, expected_count in expected_file_counts.items():
+        date_dir_items = list((base_dir / date_str).iterdir())
+        # no subdirs, only files
+        assert not any(i.is_dir() for i in date_dir_items)
+        assert expected_count == len(date_dir_items)
 
 
 def _run_snakemake(tmp_path):
