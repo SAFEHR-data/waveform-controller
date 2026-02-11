@@ -21,18 +21,9 @@ from locations import (
     CSV_PATTERN,
     make_file_name,
 )
-from pseudon.hashing import do_hash
 from pseudon.pseudon import csv_to_parquets
 
-
-def get_file_age(file_path: Path) -> timedelta:
-    # need to use UTC to avoid DST issues
-    file_time_utc = datetime.fromtimestamp(file_path.stat().st_mtime, timezone.utc)
-    now_utc = datetime.now(timezone.utc)
-    return now_utc - file_time_utc
-
-def hash_csn(csn: str) -> str:
-    return do_hash("csn", csn)
+from utils import determine_eventual_outputs
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -52,6 +43,7 @@ CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MI
 # be fed into snakemake.
 
 
+<<<<<<< HEAD
 class InputCsvFile:
     """Represent the different files in the pipeline from the point of view of one
     csn + day + variable + channel combination (ie. one "original CSV" file).
@@ -128,6 +120,9 @@ def determine_eventual_outputs():
 
 
 all_outputs, hash_to_csn = determine_eventual_outputs()
+=======
+all_outputs, hash_to_csn = determine_eventual_outputs(CSV_PATTERN, CSV_WAIT_TIME)
+>>>>>>> 601f2c3 (Refactor Snakefile to make it easier to write a unit test for date exclusion.)
 ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 
