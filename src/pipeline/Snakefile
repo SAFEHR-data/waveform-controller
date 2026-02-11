@@ -42,7 +42,7 @@ CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MI
 # Therefore, look at the input files and work out the eventual output files so they can
 # be fed into snakemake.
 
-all_outputs, hash_to_csn = determine_eventual_outputs(CSV_WAIT_TIME)
+all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES)
 ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 
