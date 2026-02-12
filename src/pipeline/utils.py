@@ -17,6 +17,16 @@ from locations import (
 )
 
 
+def config_bool(value):
+    """Convert a config value from env/CLI to a bool."""
+    s = str(value).strip().lower()
+    if s in {"", "0", "false"}:
+        return False
+    if s in {"1", "true"}:
+        return True
+    raise ValueError(f'Can\'t interpret value "{value}" as a boolean')
+
+
 def hash_csn(csn: str) -> str:
     return do_hash("csn", csn)
 

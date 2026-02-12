@@ -19,7 +19,7 @@ from locations import (
 )
 from pseudon.pseudon import csv_to_parquets
 
-from utils import determine_eventual_outputs
+from utils import config_bool, determine_eventual_outputs
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -34,7 +34,7 @@ CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MI
 
 # To prevent Snakemake picking up old files in production, we can set a flag to to only
 # use files with a date prefix matching yesterday's date. Defaults to True
-ONLY_USE_CSV_FROM_YESTERDAY = bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
+ONLY_USE_CSV_FROM_YESTERDAY = config_bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
 
 # We can optionally select a single date to process or a regular expression to match multiple dates.
 PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
