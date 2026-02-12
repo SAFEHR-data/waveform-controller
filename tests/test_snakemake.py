@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from pathlib import Path
 
 import locations
@@ -15,9 +15,10 @@ def mock_do_hash(csn: str):
 def _make_test_input_csv(tmp_path):
     files = []
     # today
+    today = datetime.now(tz=timezone.utc).date()
     files.append(
         TestFileDescription(
-            datetime.strftime(datetime.now(), "%Y-%m-%d"),
+            today.isoformat(),
             1735740783.0,
             "SECRET_CSN_1235",
             "SECRET_MRN_12346",
@@ -33,7 +34,7 @@ def _make_test_input_csv(tmp_path):
     # from yesterday
     files.append(
         TestFileDescription(
-            datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            (today - timedelta(days=1)).isoformat(),
             1735740783.0,
             "SECRET_CSN_1235",
             "SECRET_MRN_12346",
@@ -48,7 +49,7 @@ def _make_test_input_csv(tmp_path):
     # two files from 2 days ago
     files.append(
         TestFileDescription(
-            datetime.strftime(datetime.now() - timedelta(2), "%Y-%m-%d"),
+            (today - timedelta(days=2)).isoformat(),
             1735801965.0,
             "SECRET_CSN_1234",
             "SECRET_MRN_12345",
@@ -62,7 +63,7 @@ def _make_test_input_csv(tmp_path):
     )
     files.append(
         TestFileDescription(
-            datetime.strftime(datetime.now() - timedelta(2), "%Y-%m-%d"),
+            (today - timedelta(days=2)).isoformat(),
             1735801965.0,
             "SECRET_CSN_1234",
             "SECRET_MRN_12345",

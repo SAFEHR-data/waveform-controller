@@ -85,7 +85,7 @@ def determine_eventual_outputs(
     csv_wait_time: timedelta, process_only_yesterday: bool, process_datestring: str
 ):
     """
-    :param timedelta: only process files older than this
+    :param csv_wait_time: only process files older than this
     :param process_only_yesterday: if false we process all dates, true only from yesterday
     :param process_datestring: a regular expression to match datestrings. Has no effect if
     process_only_yesterday is true
@@ -102,9 +102,9 @@ def determine_eventual_outputs(
     _hash_to_csn: dict[str, str] = {}
 
     if process_only_yesterday:
-        process_datestring = datetime.strftime(
-            datetime.now() - timedelta(1), "%Y-%m-%d"
-        )
+        process_datestring = (
+            datetime.now(tz=timezone.utc).date() - timedelta(days=1)
+        ).isoformat()
 
     for csn in all_wc.csn:
         _hash_to_csn[hash_csn(csn)] = csn
