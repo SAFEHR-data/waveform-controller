@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import re
 
 from snakemake.io import glob_wildcards
 
@@ -70,10 +71,14 @@ def get_file_age(file_path: Path) -> timedelta:
     return now_utc - file_time_utc
 
 
-def determine_eventual_outputs(csv_wait_time: timedelta, process_yesterday_only: bool):
+def determine_eventual_outputs(
+    csv_wait_time: timedelta, process_only_yesterday: bool, process_datestring: str
+):
     """
     :param timedelta: only process files older than this
-    :param process_one_day_only: if true we only allow files from yesterday
+    :param process_only_yesterday: if false we process all dates, true only from yesterday
+    :param process_datestring: a regular expression to match datestrings. Has no effect if
+    process_only_yesterday is true
     :returns: A list of InputCsvFile and a dictionary containing the hash and csn values.
     """
     # Discover all CSVs using the basic file name pattern
@@ -85,6 +90,12 @@ def determine_eventual_outputs(csv_wait_time: timedelta, process_yesterday_only:
 
     # Build reverse lookup using named wildcards
     _hash_to_csn: dict[str, str] = {}
+
+    if process_only_yesterday:
+        process_datestring = datetime.strftime(
+            datetime.now() - timedelta(1), "%Y-%m-%d"
+        )
+
     for csn in all_wc.csn:
         _hash_to_csn[hash_csn(csn)] = csn
     # Apply all_wc to FILE_STEM_PATTERN_HASHED to generate the output stems
@@ -94,11 +105,9 @@ def determine_eventual_outputs(csv_wait_time: timedelta, process_yesterday_only:
     ):
         input_file_obj = InputCsvFile(date, csn, variable_id, channel_id, units)
         orig_file = input_file_obj.get_original_csv_path()
-        if process_yesterday_only:
-            yesterday = datetime.now() - timedelta(1)
-            if date != datetime.strftime(yesterday, "%Y-%m-%d"):
-                print(f"Skipping file not from yesterday {orig_file}")
-                continue
+        if re.search(process_datestring, date) is None:
+            print(f"Skipping file not from {process_datestring} {orig_file}")
+            continue
         if csn == "unmatched_csn":
             print(f"Skipping file with unmatched CSN: {orig_file}")
             continue

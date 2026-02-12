@@ -31,7 +31,7 @@ def _make_test_input_csv(tmp_path):
         )
     )
 
-    # yesterday
+    # from yesterday
     files.append(
         TestFileDescription(
             datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
@@ -47,7 +47,7 @@ def _make_test_input_csv(tmp_path):
             4,
         )
     )
-    # two days ago, first CSN again
+    # two files from 2 days ago
     files.append(
         TestFileDescription(
             datetime.strftime(datetime.now() - timedelta(2), "%Y-%m-%d"),
@@ -60,6 +60,20 @@ def _make_test_input_csv(tmp_path):
             50,
             "uV",
             5,
+        )
+    )
+    files.append(
+        TestFileDescription(
+            datetime.strftime(datetime.now() - timedelta(2), "%Y-%m-%d"),
+            1735801965.0,
+            "SECRET_CSN_1234",
+            "SECRET_MRN_12345",
+            "SECRET_LOCATION_123",
+            "27",
+            "14",
+            50,
+            "uV",
+            4,
         )
     )
 
@@ -83,7 +97,24 @@ def test_determine_eventual_outputs(tmp_path: Path, monkeypatch):
     )
     monkeypatch.setattr("src.pipeline.utils.hash_csn", mock_do_hash)
     csv_wait_time = timedelta(0)
-    files, hash_to_csn = utils.determine_eventual_outputs(csv_wait_time, True)
+    # with process only yesterday true we should return only the single file from yesterday
+    process_only_yesterday = True
+    process_datestring = ""
+    files, hash_to_csn = utils.determine_eventual_outputs(
+        csv_wait_time, process_only_yesterday, process_datestring
+    )
     assert len(files) == 1
-    files, hash_to_csn = utils.determine_eventual_outputs(csv_wait_time, False)
-    assert len(files) == 3
+    # with process only yesterday false and an empty process_datestring we should return all 4 files.
+    process_only_yesterday = False
+    process_datestring = ""
+    files, hash_to_csn = utils.determine_eventual_outputs(
+        csv_wait_time, process_only_yesterday, process_datestring
+    )
+    assert len(files) == 4
+    # with process only yesterday false and process_datestring set to two days ago we should return the two files from two days ago
+    process_only_yesterday = False
+    process_datestring = datetime.strftime(datetime.now() - timedelta(2), "%Y-%m-%d")
+    files, hash_to_csn = utils.determine_eventual_outputs(
+        csv_wait_time, process_only_yesterday, process_datestring
+    )
+    assert len(files) == 2

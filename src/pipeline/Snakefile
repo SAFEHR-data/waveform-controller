@@ -33,8 +33,11 @@ from utils import determine_eventual_outputs
 CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MINUTES']))
 
 # To prevent Snakemake picking up old files in production, we can set a flag to to only
-# use files with a date prefix matching yesterday's date.
+# use files with a date prefix matching yesterday's date. Defaults to True
 ONLY_USE_CSV_FROM_YESTERDAY = bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
+
+# We can optionally select a single date to process or a regular expression to match multiple dates.
+PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
 
 # The problem here is that snakemake works "backwards" in that you have to define which
 # files you want to be produced, yet we don't know what output files we need until the
@@ -42,7 +45,7 @@ ONLY_USE_CSV_FROM_YESTERDAY = bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
 # Therefore, look at the input files and work out the eventual output files so they can
 # be fed into snakemake.
 
-all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY)
+all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY, PROCESS_CSV_FROM_DATE)
 ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 

@@ -23,11 +23,15 @@ SNAKEMAKE_CORES="${SNAKEMAKE_CORES:-1}"
 echo "$0: invoking snakemake, cores=$SNAKEMAKE_CORES, logging to $outer_log_file"
 # For telling the pipeline not to go all the way
 SNAKEMAKE_RULE_UNTIL="${SNAKEMAKE_RULE_UNTIL:-all}"
+# We default to only matching files from yesterday
+ONLY_USE_CSV_FROM_YESTERDAY="${ONLY_USE_CSV_FROM_YESTERDAY:-True}"
+# Default will match any date containing numbers
+PROCESS_CSV_FROM_DATE="${PROCESS_CSV_FROM_DATE:-'[0-9]'}"
 set +e
 snakemake --snakefile /app/src/pipeline/Snakefile \
   --cores "$SNAKEMAKE_CORES" \
   --until "$SNAKEMAKE_RULE_UNTIL" \
-  --config CSV_AGE_THRESHOLD_MINUTES="${CSV_AGE_THRESHOLD_MINUTES}" ONLY_USE_CSV_FROM_YESTERDAY="${ONLY_USE_CSV_FROM_YESTERDAY}" \
+  --config CSV_AGE_THRESHOLD_MINUTES="${CSV_AGE_THRESHOLD_MINUTES}" ONLY_USE_CSV_FROM_YESTERDAY="${ONLY_USE_CSV_FROM_YESTERDAY}" PROCESS_CSV_FROM_DATE="${PROCESS_CSV_FROM_DATE}"\
   >> "$outer_log_file" 2>&1
 ret_code=$?
 set -e
