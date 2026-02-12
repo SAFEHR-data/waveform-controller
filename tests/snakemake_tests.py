@@ -69,6 +69,8 @@ def _make_test_input_csv(tmp_path):
         csv_path = original_csv_dir / t.get_orig_csv()
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         with open(csv_path, "w") as f:
+            # for this test doesn't use the contents of the files, only their
+            # filenames, so we'll save some processing by creating empty files.
             f.write("")
 
 
