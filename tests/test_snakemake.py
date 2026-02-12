@@ -12,7 +12,7 @@ def mock_do_hash(csn: str):
     return "no-hash"
 
 
-def _make_test_input_csv(tmp_path):
+def _make_test_input_csv(csv_dir: Path):
     files = []
     # today
     today = datetime.now(tz=timezone.utc).date()
@@ -77,22 +77,22 @@ def _make_test_input_csv(tmp_path):
     )
 
     for t in files:
-        original_csv_dir = tmp_path / "waveform-export/original-csv"
-        csv_path = original_csv_dir / t.get_orig_csv()
+        csv_path = csv_dir / t.get_orig_csv()
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         with open(csv_path, "w") as f:
             # for this test doesn't use the contents of the files, only their
             # filenames, so we'll save some processing by creating empty files.
             f.write("")
+    return [f.get_orig_csv() for f in files]
 
 
 def test_determine_eventual_outputs(tmp_path: Path, monkeypatch):
-    _make_test_input_csv(tmp_path)
     original_csv_dir = tmp_path / locations.WAVEFORM_ORIGINAL_CSV.relative_to("/")
+    expected_paths = _make_test_input_csv(original_csv_dir)
     monkeypatch.setattr(
         utils,
         "CSV_PATTERN",
-        original_csv_dir / "{date}/{date}.{csn}.{variable_id}.{channel_id}.{units}.csv",
+        original_csv_dir / (locations.FILE_STEM_PATTERN + ".csv")
     )
     monkeypatch.setattr("src.pipeline.utils.hash_csn", mock_do_hash)
     csv_wait_time = timedelta(0)
