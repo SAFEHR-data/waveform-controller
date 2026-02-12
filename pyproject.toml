@@ -21,6 +21,8 @@ dependencies = [
 dev = [
     "pytest>=9.0.2",
     "stablehash==0.3.0",
+    "types-pika-ts",
+    "types-psycopg2",
 ]
 
 [project.scripts]

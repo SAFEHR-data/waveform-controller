@@ -5,7 +5,8 @@ first entry being the most recent.
 SELECT
   mn.mrn as mrn,
   mn.nhs_number as nhs_number,
-  hv.encounter as csn
+  hv.encounter as csn,
+  mn.research_opt_out as research_opt_out
 FROM {schema_name}.mrn mn
 INNER JOIN {schema_name}.hospital_visit hv
   ON mn.mrn_id = hv.mrn_id

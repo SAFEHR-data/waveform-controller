@@ -10,9 +10,12 @@ import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
+from utils import DedupeFilter
 
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
+logger.setLevel(settings.LOG_LEVEL)
+# logger.addFilter(DedupeFilter(window_seconds=60))
 
 emap_db = db.starDB()
 emap_db.init_query()
@@ -43,6 +46,7 @@ def reject_message(ch, delivery_tag, requeue):
 
 
 def waveform_callback(ch, method_frame, _header_frame, body):
+    logger.debug("Message received of length %s", len(body))
     data = json.loads(body)
     try:
         location_string = data["mappedLocationString"]
@@ -53,6 +57,8 @@ def waveform_callback(ch, method_frame, _header_frame, body):
         units = data["unit"]
         waveform_data = data["numericValues"]
         mapped_location_string = data["mappedLocationString"]
+        logger.debug("Message is for loc %s, var %s, ch %s",
+                     location_string, source_variable_id, source_channel_id)
     except IndexError as e:
         reject_message(ch, method_frame.delivery_tag, False)
         logger.error(
@@ -72,10 +78,16 @@ def waveform_callback(ch, method_frame, _header_frame, body):
             observation_time,
             exc_info=True,
         )
-        matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn")
+        matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn", False)
     except ConnectionError:
         logger.error("Database error, will try again", exc_info=True)
         reject_message(ch, method_frame.delivery_tag, True)
+        return
+
+    (mrn, nhs_no, csn, opt_out) = matched_mrn
+    if opt_out:
+        logger.info("Research opt-out is set for mrn %s, not writing.", mrn)
+        reject_message(ch, method_frame.delivery_tag, False)
         return
 
     if writer.write_frame(
@@ -86,8 +98,8 @@ def waveform_callback(ch, method_frame, _header_frame, body):
         units,
         sampling_rate,
         mapped_location_string,
-        matched_mrn[2],
-        matched_mrn[0],
+        csn,
+        mrn,
     ):
         if lookup_success:
             ack_message(ch, method_frame.delivery_tag)
@@ -105,6 +117,7 @@ def receiver():
         host=settings.RABBITMQ_HOST,
         port=settings.RABBITMQ_PORT,
     )
+    logger.info("Connecting to RabbitMQ %s", connection_parameters)
     connection = pika.BlockingConnection(connection_parameters)
     channel = connection.channel()
     channel.basic_qos(prefetch_count=1)
@@ -114,9 +127,17 @@ def receiver():
         auto_ack=False,
         on_message_callback=waveform_callback,
     )
+    logger.info("Connected to RabbitMQ, callback configured")
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
+        logger.warning("Received keyboard interrupt, exiting.")
         channel.stop_consuming()
+    except Exception as e:
+        logger.error("Received other exception")
+        logger.error(e)
+        raise e
 
+
+    logger.info("Closing connection to RabbitMQ")
     connection.close()
