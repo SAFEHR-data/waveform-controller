@@ -18,7 +18,6 @@ def _make_test_input_csv(tmp_path):
     files.append(
         TestFileDescription(
             datetime.strftime(datetime.now(), "%Y-%m-%d"),
-            "2025-01-01",
             1735740783.0,
             "SECRET_CSN_1235",
             "SECRET_MRN_12346",
@@ -35,7 +34,6 @@ def _make_test_input_csv(tmp_path):
     files.append(
         TestFileDescription(
             datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
-            "2025-01-01",
             1735740783.0,
             "SECRET_CSN_1235",
             "SECRET_MRN_12346",
