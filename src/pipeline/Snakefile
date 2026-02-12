@@ -1,5 +1,4 @@
 import json
-import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -9,16 +8,13 @@ from snakemake.io import glob_wildcards
 
 from exporter.ftps import do_upload
 from locations import (
-    WAVEFORM_HASH_LOOKUPS,
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_SNAKEMAKE_LOGS,
     WAVEFORM_PSEUDONYMISED_PARQUET,
     WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
-    ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN,
     FILE_STEM_PATTERN_HASHED,
-    CSV_PATTERN,
     make_file_name,
 )
 from pseudon.pseudon import csv_to_parquets
@@ -36,13 +32,17 @@ from utils import determine_eventual_outputs
 # so being very cautious here may not be necessary.
 CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MINUTES']))
 
+# To prevent Snakemake picking up old files in production, we can set a flag to to only
+# use files with a date prefix matching yesterday's date.
+ONLY_USE_CSV_FROM_YESTERDAY = bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
+
 # The problem here is that snakemake works "backwards" in that you have to define which
 # files you want to be produced, yet we don't know what output files we need until the
 # input files (original CSVs) are present.
 # Therefore, look at the input files and work out the eventual output files so they can
 # be fed into snakemake.
 
-all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES)
+all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY)
 ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 
