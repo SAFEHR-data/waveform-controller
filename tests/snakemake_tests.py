@@ -1,7 +1,6 @@
 from datetime import timedelta, datetime
 from pathlib import Path
 
-import pytest
 import locations
 
 import src.pipeline.utils as utils

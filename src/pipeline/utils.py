@@ -1,15 +1,11 @@
-import json
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pyarrow.parquet as pq
 from snakemake.io import glob_wildcards
 
 from pseudon.hashing import do_hash
 from locations import (
-    WAVEFORM_HASH_LOOKUPS,
-    WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_PSEUDONYMISED_PARQUET,
     WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
