@@ -260,6 +260,9 @@ def _run_snakemake(tmp_path):
     # It works around this in normal use by reading env vars only from the bind-mounted exporter.env file.
     # So to use a different config during test, we must override that file with a special version
     # that we create here.
+    # Note that since we bypass cron here, any config on your dev machine will be picked up and then
+    # overwritten by what is below. Therefore, you should explicitly set values below even if you only
+    # want the default value to be used.
     tmp_exporter_env_path = tmp_path / "config/exporter.env"
     tmp_exporter_env_path.parent.mkdir(exist_ok=True)
     tmp_exporter_env_path.write_text(
@@ -268,6 +271,7 @@ def _run_snakemake(tmp_path):
         "INSTANCE_NAME=pytest\n"
         "CSV_AGE_THRESHOLD_MINUTES=5\n"
         "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
+        "PROCESS_CSV_FROM_DATE=\n"
     )
     # run system under test (exporter container) in foreground
     compose_args = [
