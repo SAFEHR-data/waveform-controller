@@ -93,6 +93,12 @@ def _make_test_input_csv(csv_dir: Path):
     [
         # with process only yesterday true we should return only the single file from yesterday
         (True, "", [1]),
+        # process only yesterday overrides process_datestring
+        (
+            True,
+            (datetime.now(tz=timezone.utc).date() - timedelta(days=2)).isoformat(),
+            [1],
+        ),
         # with process only yesterday false and an empty process_datestring we should return all 4 files.
         (False, "", [0, 1, 2, 3]),
         # with process only yesterday false and process_datestring set to two days ago we should return the two files from two days ago
