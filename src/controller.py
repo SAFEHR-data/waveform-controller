@@ -10,16 +10,11 @@ import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
-from utils import DedupeFilter
 
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 logger.setLevel(settings.LOG_LEVEL)
 # logger.addFilter(DedupeFilter(window_seconds=60))
-
-emap_db = db.starDB()
-emap_db.init_query()
-emap_db.connect()
 
 
 class waveform_message:
@@ -45,66 +40,78 @@ def reject_message(ch, delivery_tag, requeue):
         logger.warning("Attempting to not acknowledge a message on a closed channel.")
 
 
-def waveform_callback(ch, method_frame, _header_frame, body):
-    logger.debug("Message received of length %s", len(body))
-    data = json.loads(body)
-    try:
-        location_string = data["mappedLocationString"]
-        observation_timestamp = data["observationTime"]
-        source_variable_id = data["sourceVariableId"]
-        source_channel_id = data["sourceChannelId"]
-        sampling_rate = data["samplingRate"]
-        units = data["unit"]
-        waveform_data = data["numericValues"]
-        mapped_location_string = data["mappedLocationString"]
-        logger.debug("Message is for loc %s, var %s, ch %s",
-                     location_string, source_variable_id, source_channel_id)
-    except IndexError as e:
-        reject_message(ch, method_frame.delivery_tag, False)
-        logger.error(
-            f"Waveform message {method_frame.delivery_tag} is missing required data {e}."
-        )
-        return
+class WaveformController:
+    def __init__(self):
+        self.emap_db = db.starDB()
+        self.emap_db.init_query()
+        self.emap_db.connect()
 
-    observation_time = datetime.fromtimestamp(observation_timestamp, tz=timezone.utc)
-    lookup_success = True
-    try:
-        matched_mrn = emap_db.get_row(location_string, observation_time)
-    except ValueError:
-        lookup_success = False
-        logger.error(
-            "Ambiguous or non existent match for location %s, obs time %s",
-            location_string,
-            observation_time,
-            exc_info=True,
-        )
-        matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn", False)
-    except ConnectionError:
-        logger.error("Database error, will try again", exc_info=True)
-        reject_message(ch, method_frame.delivery_tag, True)
-        return
-
-    (mrn, nhs_no, csn, opt_out) = matched_mrn
-    if opt_out:
-        logger.info("Research opt-out is set for mrn %s, not writing.", mrn)
-        reject_message(ch, method_frame.delivery_tag, False)
-        return
-
-    if writer.write_frame(
-        waveform_data,
-        source_variable_id,
-        source_channel_id,
-        observation_timestamp,
-        units,
-        sampling_rate,
-        mapped_location_string,
-        csn,
-        mrn,
-    ):
-        if lookup_success:
-            ack_message(ch, method_frame.delivery_tag)
-        else:
+    def waveform_callback(self, ch, method_frame, _header_frame, body):
+        logger.debug("Message received of length %s", len(body))
+        data = json.loads(body)
+        try:
+            location_string = data["mappedLocationString"]
+            observation_timestamp = data["observationTime"]
+            source_variable_id = data["sourceVariableId"]
+            source_channel_id = data["sourceChannelId"]
+            sampling_rate = data["samplingRate"]
+            units = data["unit"]
+            waveform_data = data["numericValues"]
+            mapped_location_string = data["mappedLocationString"]
+            logger.debug(
+                "Message is for loc %s, var %s, ch %s",
+                location_string,
+                source_variable_id,
+                source_channel_id,
+            )
+        except IndexError as e:
             reject_message(ch, method_frame.delivery_tag, False)
+            logger.error(
+                f"Waveform message {method_frame.delivery_tag} is missing required data {e}."
+            )
+            return
+
+        observation_time = datetime.fromtimestamp(
+            observation_timestamp, tz=timezone.utc
+        )
+        lookup_success = True
+        try:
+            matched_mrn = self.emap_db.get_row(location_string, observation_time)
+        except ValueError:
+            lookup_success = False
+            logger.error(
+                "Ambiguous or non existent match for location %s, obs time %s",
+                location_string,
+                observation_time,
+                exc_info=True,
+            )
+            matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn", False)
+        except ConnectionError:
+            logger.error("Database error, will try again", exc_info=True)
+            reject_message(ch, method_frame.delivery_tag, True)
+            return
+
+        (mrn, nhs_no, csn, opt_out) = matched_mrn
+        if opt_out:
+            logger.info("Research opt-out is set for mrn %s, not writing.", mrn)
+            reject_message(ch, method_frame.delivery_tag, False)
+            return
+
+        if writer.write_frame(
+            waveform_data,
+            source_variable_id,
+            source_channel_id,
+            observation_timestamp,
+            units,
+            sampling_rate,
+            mapped_location_string,
+            csn,
+            mrn,
+        ):
+            if lookup_success:
+                ack_message(ch, method_frame.delivery_tag)
+            else:
+                reject_message(ch, method_frame.delivery_tag, False)
 
 
 def receiver():
@@ -122,10 +129,11 @@ def receiver():
     channel = connection.channel()
     channel.basic_qos(prefetch_count=1)
 
+    controller = WaveformController()
     channel.basic_consume(
         queue=settings.RABBITMQ_QUEUE,
         auto_ack=False,
-        on_message_callback=waveform_callback,
+        on_message_callback=controller.waveform_callback,
     )
     logger.info("Connected to RabbitMQ, callback configured")
     try:
@@ -137,7 +145,6 @@ def receiver():
         logger.error("Received other exception")
         logger.error(e)
         raise e
-
 
     logger.info("Closing connection to RabbitMQ")
     connection.close()
