@@ -64,7 +64,7 @@ class WaveformController:
                 source_variable_id,
                 source_channel_id,
             )
-        except IndexError as e:
+        except KeyError as e:
             reject_message(ch, method_frame.delivery_tag, False)
             logger.error(
                 f"Waveform message {method_frame.delivery_tag} is missing required data {e}."
