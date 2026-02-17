@@ -13,6 +13,7 @@ from locations import (
     WAVEFORM_PSEUDONYMISED_PARQUET,
     WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
+    HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
     FILE_STEM_PATTERN_HASHED,
     make_file_name,
@@ -131,7 +132,7 @@ rule csv_to_parquet:
         WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
     log:
         # these do not get uploaded as they may contain identifiers
-        WAVEFORM_SNAKEMAKE_LOGS / (FILE_STEM_PATTERN_HASHED + ".log")
+        WAVEFORM_SNAKEMAKE_LOGS / "csv_to_parquet" / (FILE_STEM_PATTERN_HASHED + ".log")
     run:
         logger = configure_file_logging(log[0])
         original_csn = hash_to_csn[wildcards.hashed_csn]
@@ -149,7 +150,7 @@ def pseudonymised_parquet_files_for_date(wc):
     return [ao.get_pseudonymised_parquet_path() for ao in all_outputs if ao.date == wc.date]
 
 
-rule make_daily_hash_lookup:
+rule daily_hash_lookup:
     input:
         # Because we don't declare the original parquets in the output of csv_to_parquet,
         # they are not present in the Snakemake dependency DAG. Therefore, we can't reference them
@@ -159,9 +160,12 @@ rule make_daily_hash_lookup:
         pseudonymised_parquets = pseudonymised_parquet_files_for_date
     output:
         hash_lookup_json = HASH_LOOKUP_JSON
+    log:
+        WAVEFORM_SNAKEMAKE_LOGS / "daily_hash_lookup" / HASH_LOOKUP_JSON_REL.with_suffix(".log")
     run:
+        logger = configure_file_logging(log[0])
         daily_files = [ao for ao in all_outputs if ao.date == wildcards.date]
-        print(
+        logger.info(
             f"Making daily hash lookup {output.hash_lookup_json} from {len(daily_files)} files: "
             f"{input.pseudonymised_parquets}"
         )
@@ -176,7 +180,7 @@ rule make_daily_hash_lookup:
             min_timestamp, max_timestamp = parquet_min_max_value(original_parquet, "timestamp")
             if min_timestamp is None or max_timestamp is None:
                 # do not contribute to stats
-                print(f"Parquet does not have a min/max value, assumed to be empty: {original_parquet}")
+                logger.info(f"Parquet does not have a min/max value, assumed to be empty: {original_parquet}")
                 break
             entry[min_timestamp_key] = min_timestamp
             entry[max_timestamp_key] = max_timestamp
