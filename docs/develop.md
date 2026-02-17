@@ -70,6 +70,19 @@ git commit -m "Making pre-commit pass."
 git push
 ```
 
+## Dev tips
+
+`waveform-exporter` normally runs via cron once per 24 hours. This is not very convenient for dev!
+You can either set the cron frequency to every minute (`* * * * *`) and bring up the service in
+the normal way, or manually run the one-shot command below when required.
+
+```
+# make sure hasher is up first
+docker compose up -d waveform-hasher
+# run
+docker compose run --build --entrypoint /app/exporter-scripts/scheduled-script.sh waveform-exporter
+```
+
 ## Testing
 
 Even though we are largely running in docker, you may wish to let your IDE have access to a venv for running tests in.
