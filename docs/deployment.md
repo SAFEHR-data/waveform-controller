@@ -140,4 +140,3 @@ Waveform repo: `docker compose up -d`
 ### Replay old HL7 data
 
 Not yet supported, see https://github.com/SAFEHR-data/emap/issues/139
-
