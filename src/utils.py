@@ -21,4 +21,3 @@ class DedupeFilter(logging.Filter):
         self._last_message = msg
         self._last_time = now
         return True
-
