@@ -46,10 +46,10 @@ separate to the Emap project root.
 
 ### Expected top-level dir structure
 ```
-├── PIXL
-├── config
-├── waveform-controller
-└── waveform-export
+├── PIXL (repo root of the PIXL repo)
+├── config (config files for the waveform project)
+├── waveform-controller (repo root for this repo)
+└── waveform-export (bind mounted by the containers, this is the main working directory for the waveform project)
 ```
 
 ### Instructions for achieving this structure
@@ -58,6 +58,11 @@ separate to the Emap project root.
 #### Clone repos
 Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
 both inside your root directory.
+
+If on a system that has access to sensitive data, disable push remotes on all cloned repos as follows:
+```
+git remote set-url --push origin no_push.example.com
+```
 
 #### make config files
 Set up the config files as follows:
