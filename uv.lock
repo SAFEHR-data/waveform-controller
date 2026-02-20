@@ -429,7 +429,7 @@ requires-dist = [
     { name = "python-decouple", specifier = "==3.8" },
     { name = "python-slugify", specifier = "==8.0.4" },
     { name = "pyyaml", specifier = "==6.0.2" },
-    { name = "requests", specifier = "==2.32.3" },
+    { name = "requests", specifier = "==2.32.4" },
     { name = "sqlalchemy", specifier = "==2.0.36" },
     { name = "token-bucket", specifier = "==0.3.0" },
     { name = "xnat", specifier = "==0.6.2" },
@@ -1691,7 +1691,7 @@ wheels = [
 
 [[package]]
 name = "requests"
-version = "2.32.3"
+version = "2.32.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -1699,9 +1699,9 @@ dependencies = [
     { name = "idna" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/70/2bf7780ad2d390a8d301ad0b550f1581eadbd9a20f896afe06353c2a2913/requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760", size = 131218 }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/0a/929373653770d8a0d7ea76c37de6e41f11eb07559b103b1c02cafb3f7cf8/requests-2.32.4.tar.gz", hash = "sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422", size = 135258 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6", size = 64928 },
+    { url = "https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl", hash = "sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c", size = 64847 },
 ]
 
 [[package]]
@@ -2075,6 +2075,15 @@ wheels = [
 ]
 
 [[package]]
+name = "types-pika-ts"
+version = "1.3.0.20250914"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/97/5ff23d9bf737fb7ab374c8e63e0f02634477d69badce96faf1f716843c6d/types_pika_ts-1.3.0.20250914.tar.gz", hash = "sha256:3e1bac6f1b3b17a9b51f88b529c718bf40f964905029aa10fc17a49f9eada1e6", size = 23853 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/9b/c23c8435d42f7d431d137ed42af85acd729ecb20fcf02d31a028b37f97fa/types_pika_ts-1.3.0.20250914-py3-none-any.whl", hash = "sha256:c4b9dfc25350a6135de5714518e4b831b37c3fb3625e4ebb4c61181a916b6f02", size = 31507 },
+]
+
+[[package]]
 name = "types-psycopg2"
 version = "2.9.21.20251012"
 source = { registry = "https://pypi.org/simple" }
@@ -2142,6 +2151,7 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "stablehash" },
+    { name = "types-pika-ts" },
     { name = "types-psycopg2" },
 ]
 
@@ -2153,9 +2163,10 @@ requires-dist = [
     { name = "pre-commit", specifier = ">=4.5.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
-    { name = "requests", specifier = "==2.32.3" },
+    { name = "requests", specifier = "==2.32.4" },
     { name = "snakemake", specifier = "==9.14.5" },
     { name = "stablehash", marker = "extra == 'dev'", specifier = "==0.3.0" },
+    { name = "types-pika-ts", marker = "extra == 'dev'" },
     { name = "types-psycopg2", marker = "extra == 'dev'" },
 ]
 
