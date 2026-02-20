@@ -26,6 +26,13 @@ There is a one-off (per key vault) step that needs to be performed manually.
 
 First, install the Azure CLI tools in the usual way for your OS.
 
+On the GAE you can run the AZ CLI in a container like so:
+```
+docker run --rm -e HTTPS_PROXY=$HTTPS_PROXY -it mcr.microsoft.com/azure-cli:azurelinux3.0
+```
+as per https://learn.microsoft.com/en-us/cli/azure/run-azure-cli-docker?view=azure-cli-latest
+
+
 Log in using the service principal.
 Do not include password on command line; let it prompt you and then paste it in.
 ```
