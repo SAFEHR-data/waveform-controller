@@ -139,4 +139,18 @@ Waveform repo: `docker compose up -d`
 
 ### Replay old HL7 data
 
-Not yet supported, see https://github.com/SAFEHR-data/emap/issues/139
+Make sure you have built the image (it's the same image as waveform-reader):
+`emap docker build waveform-reader-hl7-replay`
+
+To run:
+```
+emap docker run waveform-reader-hl7-replay --start-datetime '2024-08-25T00:00:00Z' --end-datetime '2024-08-26T00:00:00Z' --source-location 'UCHT03ICURM06' --dry-run
+```
+
+Note: timestamps must be parseable by Java's Instant.parse(). Ie. in ISO long form, with hours, minutes, seconds, and UTC indicator 'Z', as shown above.
+
+Date intervals are half-open (inclusive on the start, exclusive on the end)
+
+`--source-location` is optional; all locations included if it's not specified.
+
+Filtering by variable is not currently possible.
