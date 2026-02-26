@@ -154,3 +154,24 @@ Date intervals are half-open (inclusive on the start, exclusive on the end)
 `--source-location` is optional; all locations included if it's not specified.
 
 Filtering by variable is not currently possible.
+
+# Run de-id on ad adhoc basis
+
+> [!NOTE]
+> Due to the way scheduled-script.sh pulls in its config from the config file, the contents of
+> that file will override any env vars you specify on the command line below.
+
+You need to temporarily change the exporter.env config file to run this command.
+
+You are likely to want to set the following values (example date shown):
+```
+ONLY_USE_CSV_FROM_YESTERDAY=FALSE
+# something shorter than the standard 180 may be needed if you only just processed the data
+CSV_AGE_THRESHOLD_MINUTES=???
+# use actual date you want to process
+PROCESS_CSV_FROM_DATE=1234-12-12
+```
+docker compose run --entrypoint /app/exporter-scripts/scheduled-script.sh waveform-exporter
+```
+
+Remember to put the config back afterwards.
