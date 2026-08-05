@@ -15,3 +15,9 @@ wheels/
 
 # settings files (should not be in the source tree anyway, but just in case)
 *.env
+
+# snakemake tracking files
+.snakemake
+
+# pytest tmp paths
+.pytest_tmp

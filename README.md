@@ -1,6 +1,12 @@
 A controller for reading waveform data from a rabbitmq queue and processing it.
 
 # Running the Code
+
+## Pre-reqs
+
+Up-to-date Docker and Docker Compose. We have seen config bugs when using old Docker Compose versions,
+such as that packaged with recent Ubuntu LTS. Docker Compose v5.0.1 and Docker 29.1.5 are known to work.
+
 ## 1 Install and deploy EMAP
 Follow the emap development [instructions](https://github.com/SAFEHR-data/emap/blob/main/docs/dev/core.md#deploying-a-live-version "Instructions for deploying a live version of EMAP") configure and deploy a version of EMAP. To run a local version you'll need to set
 
@@ -40,26 +46,60 @@ separate to the Emap project root.
 
 ### Expected top-level dir structure
 ```
-├── PIXL
-├── config
-├── waveform-controller
-└── waveform-export
+├── PIXL (repo root of the PIXL repo)
+├── config (config files for the waveform project)
+├── waveform-controller (repo root for this repo)
+└── waveform-export (bind mounted by the containers, this is the main working directory for the waveform project)
 ```
 
 ### Instructions for achieving this structure
 
+
+#### Clone repos
 Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
 both inside your root directory.
 
+If on a system that has access to sensitive data, disable push remotes on all cloned repos as follows:
+```
+git remote set-url --push origin no_push.example.com
+```
+
+#### make config files
 Set up the config files as follows:
 ```
 mkdir config
 cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
-cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/settings.env
+cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/exporter.env
 cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
 ```
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
 
+#### Fill in config files
+The config files contain documentation in comments, but some are further discussed here.
+
+See [azure and hasher setup](docs/azure_hashing.md) to configure the hasher.
+
+`INSTANCE_NAME` in `exporter.env` should always be set to a non-empty, globally unique value. This is used to
+identify the instance of the exporter when the files are uploaded to the FTPS server.
+This avoids production data being mixed up with synthetic data.
+The `INSTANCE_NAME` isn't used as part of file paths on the system where the instance is running: it's assumed
+that only one instance will be using each filesystem location, so this would be unnecessary. It's only used on the
+FTPS server.
+Example names:
+* `yourname-dev` for your dev instance
+* `production` for production ONLY
+
+
+When deploying a new version of this code, you should diff the .EXAMPLE file against its live version,
+eg. by running `vimdiff waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env`.
+
+This checks if any config options have been added/removed from the .EXAMPLE, and thus should be
+added/removed from the live file.
+
+> [!CAUTION]
+> Be careful not to copy sensitive data from the live config file to the .EXAMPLE file!
+
+#### make necessary directories
 If it doesn't already exist you should create a directory named
 `waveform-export` in the parent directory to store the saved waveform
 messages.
@@ -68,12 +108,17 @@ messages.
 mkdir waveform-export
 ```
 
-Build and start the controller and exporter with docker
+#### run it!
+
+Build and start the hasher, controller and exporter with docker.
 ```
 cd waveform-controller
 docker compose build
 docker compose up -d
 ```
+
+For more complex deployment scenarios, such as where there is existing data you need to preserve,
+see the more advanced [deployment doc](docs/deployment.md)
 
 ## 3 Check if it's working
 

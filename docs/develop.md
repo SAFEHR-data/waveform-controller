@@ -38,9 +38,8 @@ ls .git/hooks | grep -v .sample # should now see a new pre-commit hook
 At the moment, we're using:
 
 - [`ruff` and `ruff-format`](https://docs.astral.sh/ruff/) for python code formatting,
-- [nbstribout](https://github.com/kynan/nbstripout) to clear notebook output.
-- A small selection of line-endings fixers.
-
+- [`mypy`](https://mypy.readthedocs.io/en/stable/) for static type checking,
+- [`docformatter`](https://github.com/PyCQA/docformatter) to format docstrings.
 If you want to run them individually you can do so with:
 
 ```
@@ -59,7 +58,7 @@ to use that for consistency).
 ### Problems with pre-commit?
 
 If the linters are flagging false positives, you can remove them or comment them
-out in [the configuration](./.pre-commit-config.yaml). If you've accidentally
+out in [the configuration](../.pre-commit-config.yaml). If you've accidentally
 commited something that is failing the linting step in CI, you can fix this
 with:
 
@@ -69,6 +68,19 @@ pre-commit run --all
 git add -u
 git commit -m "Making pre-commit pass."
 git push
+```
+
+## Dev tips
+
+`waveform-exporter` normally runs via cron once per 24 hours. This is not very convenient for dev!
+You can either set the cron frequency to every minute (`* * * * *`) and bring up the service in
+the normal way, or manually run the one-shot command below when required.
+
+```
+# make sure hasher is up first
+docker compose up -d waveform-hasher
+# run
+docker compose run --build --entrypoint /app/exporter-scripts/scheduled-script.sh waveform-exporter
 ```
 
 ## Testing
@@ -86,11 +98,29 @@ From the repo root, install the software and its deps:
 uv pip install -e '.[dev]'
 ```
 
+Some tests run in Docker and require the hasher to be configured with dev key vault credentials, which
+it likely already is if you've followed the steps in [azure and hasher setup](azure_hashing.md) .
 
-### API tests
+The tests bring up temporary containers as needed, so you don't need to manually pre-start
+any containers to make the tests work, and they shouldn't interfere with anything you might already have running.
 
-from PROJECT_ROOT directory
+When these tests run on GitHub Actions, they use GitHub Secrets to get the creds for the dev key vault.
 
-```shell script
-./tools/run-tests.sh
+Run tests with:
+```
+pytest
+```
+
+## Manual hash lookup
+
+Use `docker ps` to find the ephemeral port of the hasher you are running locally. It should only be listening on
+127.0.0.1.
+
+Use curl to send it HTTP requests as below. Don't forget the prefix "csn:" that indicates what type of value you
+want to hash.
+
+```bash
+# example port 32801
+curl 'http://localhost:32801/hash?project_slug=waveform-exporter&message=csn:SECRET_CSN_1235'
+ea2fda353f54926ae9d43fbc0ff4253912c250a137e9bd38bed860abacfe03ef
 ```

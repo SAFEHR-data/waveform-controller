@@ -50,7 +50,7 @@ def do_upload(abs_file_to_upload: Path):
         settings.FTPS_USERNAME,
         settings.FTPS_PASSWORD,
     )
-    remote_project_dir = "waveform-export"
+    remote_project_dir = str(Path("waveform-export") / settings.INSTANCE_NAME)
     _create_and_set_as_cwd(ftp, remote_project_dir)
     remote_filename = os.path.basename(file_to_upload)
     command = f"STOR {remote_filename}"

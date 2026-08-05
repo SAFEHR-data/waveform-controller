@@ -1,30 +1,24 @@
 import json
 import time
 from datetime import datetime, timedelta, timezone
-from snakemake.io import glob_wildcards
+from pathlib import Path
+
+from exporter.daily_summary import make_daily_hash_summary
 from exporter.ftps import do_upload
 from locations import (
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_SNAKEMAKE_LOGS,
     WAVEFORM_PSEUDONYMISED_PARQUET,
     WAVEFORM_FTPS_LOGS,
+    HASH_LOOKUP_JSON,
+    HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
     FILE_STEM_PATTERN_HASHED,
-    CSV_PATTERN,
     make_file_name,
 )
-from pathlib import Path
-from pseudon.hashing import do_hash
 from pseudon.pseudon import csv_to_parquets
 
-def get_file_age(file_path: Path) -> timedelta:
-    # need to use UTC to avoid DST issues
-    file_time_utc = datetime.fromtimestamp(file_path.stat().st_mtime, timezone.utc)
-    now_utc = datetime.now(timezone.utc)
-    return now_utc - file_time_utc
-
-def hash_csn(csn: str) -> str:
-    return do_hash("csn", csn)
+from utils import config_bool, determine_eventual_outputs
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -35,7 +29,14 @@ def hash_csn(csn: str) -> str:
 # protect against very out of order data though)
 # Also note that snakemake can detect and re-run if the file is subsequently updated,
 # so being very cautious here may not be necessary.
-CSV_WAIT_TIME = timedelta(minutes=5)
+CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MINUTES']))
+
+# To prevent Snakemake picking up old files in production, we can set a flag to to only
+# use files with a date prefix matching yesterday's date. Defaults to True
+ONLY_USE_CSV_FROM_YESTERDAY = config_bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
+
+# We can optionally select a single date to process or a regular expression to match multiple dates.
+PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
 
 # The problem here is that snakemake works "backwards" in that you have to define which
 # files you want to be produced, yet we don't know what output files we need until the
@@ -43,47 +44,9 @@ CSV_WAIT_TIME = timedelta(minutes=5)
 # Therefore, look at the input files and work out the eventual output files so they can
 # be fed into snakemake.
 
-def determine_eventual_outputs():
-    # Parse all CSVs using the basic file name pattern
-    before = time.perf_counter()
-    all_wc = glob_wildcards(CSV_PATTERN)
-
-    # all_wc.date, all_wc.csn, all_wc.streamId, all_wc.units are parallel lists
-    # e.g. all_wc.csn[0] corresponds to all_wc.date[0], etc.
-
-    # Build reverse lookup using named wildcards
-    _hash_to_csn: dict[str, str] = {}
-    for csn in all_wc.csn:
-        _hash_to_csn[hash_csn(csn)] = csn
-    # Apply all_wc to FILE_STEM_PATTERN_HASHED to generate the output stems
-    _all_outputs = []
-    for date, csn, variable_id, channel_id, units \
-            in zip(all_wc.date, all_wc.csn, all_wc.variable_id, all_wc.channel_id, all_wc.units):
-        subs_dict = dict(
-            date = date,
-            csn = csn,
-            hashed_csn = hash_csn(csn),
-            variable_id = variable_id,
-            channel_id = channel_id,
-            units = units
-        )
-        orig_file = Path(make_file_name(str(CSV_PATTERN), subs_dict))
-        if csn == 'unmatched_csn':
-            print(f"Skipping file with unmatched CSN: {orig_file}")
-            continue
-        file_age = get_file_age(orig_file)
-        if file_age < CSV_WAIT_TIME:
-            print(f"File too new (age={file_age}): {orig_file}")
-            continue
-        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, subs_dict)
-        final_output_file = WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
-        _all_outputs.append(final_output_file)
-    after = time.perf_counter()
-    print(f"Calculated output files using newness threshold {CSV_WAIT_TIME} in {after - before} seconds")
-    return _all_outputs, _hash_to_csn
-
-
-all_outputs, hash_to_csn = determine_eventual_outputs()
+all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY, PROCESS_CSV_FROM_DATE)
+ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
+ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 
 def configure_file_logging(log_file):
     import logging
@@ -100,7 +63,16 @@ def configure_file_logging(log_file):
 
 rule all:
     input:
-        all_outputs
+        ftps_uploaded = ALL_FTPS_UPLOADED,
+        daily_hash_lookups = ALL_DAILY_HASH_LOOKUPS
+
+rule all_ftps_uploaded:
+    input:
+        ALL_FTPS_UPLOADED
+
+rule all_daily_hash_lookups:
+    input:
+        ALL_DAILY_HASH_LOOKUPS
 
 def input_file_maker(wc):
     unhashed_csn = hash_to_csn[wc.hashed_csn]
@@ -125,7 +97,7 @@ rule csv_to_parquet:
         WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
     log:
         # these do not get uploaded as they may contain identifiers
-        WAVEFORM_SNAKEMAKE_LOGS / (FILE_STEM_PATTERN_HASHED + ".log")
+        WAVEFORM_SNAKEMAKE_LOGS / "csv_to_parquet" / (FILE_STEM_PATTERN_HASHED + ".log")
     run:
         logger = configure_file_logging(log[0])
         original_csn = hash_to_csn[wildcards.hashed_csn]
@@ -137,6 +109,32 @@ rule csv_to_parquet:
             variable_id=wildcards.variable_id,
             channel_id=wildcards.channel_id,
             units=wildcards.units)
+
+
+def pseudonymised_parquet_files_for_date(wc):
+    return [ao.get_pseudonymised_parquet_path() for ao in all_outputs if ao.date == wc.date]
+
+
+rule daily_hash_lookup:
+    input:
+        # Because we don't declare the original parquets in the output of csv_to_parquet,
+        # they are not present in the Snakemake dependency DAG. Therefore, we can't reference them
+        # here either.
+        # We lie to Snakemake that the input is the pseudon parquets, but then we use InputCsvFile
+        # to determine the actual input file (the original parquets).
+        pseudonymised_parquets = pseudonymised_parquet_files_for_date
+    output:
+        hash_lookup_json = HASH_LOOKUP_JSON
+    log:
+        WAVEFORM_SNAKEMAKE_LOGS / "daily_hash_lookup" / HASH_LOOKUP_JSON_REL.with_suffix(".log")
+    run:
+        logger = configure_file_logging(log[0])
+        daily_files = [ao for ao in all_outputs if ao.date == wildcards.date]
+        logger.info(
+            f"Making daily hash lookup {output.hash_lookup_json} from {len(daily_files)} files: "
+            f"{input.pseudonymised_parquets}"
+        )
+        make_daily_hash_summary(daily_files, output.hash_lookup_json)
 
 
 rule send_ftps:

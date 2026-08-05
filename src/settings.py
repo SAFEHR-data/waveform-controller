@@ -1,10 +1,14 @@
 import os
 
 
-def get_from_env(env_var, *, default_value=None, setting_name=None):
+def get_from_env(env_var, *, default_value=None, setting_name=None, required=False):
     if setting_name is None:
         setting_name = env_var
     value_from_env = os.environ.get(env_var)
+    if required and not value_from_env:
+        raise RuntimeError(
+            f"Env var {env_var} is required but is not set or blank (val={value_from_env})"
+        )
     globals()[setting_name] = (
         value_from_env if value_from_env is not None else default_value
     )
@@ -29,3 +33,10 @@ get_from_env("FTPS_HOST")
 get_from_env("FTPS_PORT", default_value=990)
 get_from_env("FTPS_USERNAME")
 get_from_env("FTPS_PASSWORD")
+
+get_from_env("HASHER_API_HOSTNAME")
+get_from_env("HASHER_API_PORT")
+
+get_from_env("LOG_LEVEL", default_value="INFO")
+
+get_from_env("INSTANCE_NAME", required=True)

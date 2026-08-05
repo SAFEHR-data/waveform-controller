@@ -4,7 +4,6 @@ on:
   push:
     branches: [main, dev]
   pull_request:
-    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
@@ -13,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_ROOT: ${{ github.workspace }}/waveform-controller
-
+    environment: hasher
     steps:
       - uses: actions/checkout@v5
         with:
@@ -39,6 +38,30 @@ jobs:
       - name: Install with dependencies
         working-directory: waveform-controller
         run: uv pip install '.[dev]'
+
+      - name: Prepare config env files for compose
+        working-directory: waveform-controller
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_KEY_VAULT_NAME: ${{ secrets.AZURE_KEY_VAULT_NAME }}
+          AZURE_KEY_VAULT_SECRET_NAME: ${{ vars.AZURE_KEY_VAULT_SECRET_NAME }}
+        run: |
+          mkdir -p ../config
+          cp config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env
+          cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
+          cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
+          {
+            echo ""
+            echo "AZURE_CLIENT_ID=${AZURE_CLIENT_ID}"
+            echo "AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}"
+            echo "AZURE_TENANT_ID=${AZURE_TENANT_ID}"
+            echo "AZURE_KEY_VAULT_NAME=${AZURE_KEY_VAULT_NAME}"
+            echo "AZURE_KEY_VAULT_SECRET_NAME=${AZURE_KEY_VAULT_SECRET_NAME}"
+          } >> ../config/hasher.env
+          
+          # exporter config can't be done here because test_snakemake_integration.py wires in its own config file
 
       - name: Run the tests
         working-directory: waveform-controller
