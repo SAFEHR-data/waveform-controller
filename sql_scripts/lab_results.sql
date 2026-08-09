@@ -6,13 +6,13 @@
 -- 390793060 WCC
 
 select
-result_last_modified_datetime as date,
+r.result_last_modified_datetime as date,
 (select name from star.lab_test_definition as ltd
 where ltd.lab_test_definition_id = r.lab_test_definition_id) as name,
-value_as_real as value,
-units,
-abnormal_flag,
-comment
+r.value_as_real as value,
+r.units,
+r.abnormal_flag,
+r.comment
 
 
 from star.lab_result as r
