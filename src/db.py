@@ -53,3 +53,47 @@ class starDB:
             )
 
         return rows[0]
+
+
+class caboodleDB:
+    """For querying the caboodle database to extract electronic healthcare records per
+    patient."""
+
+    connection_string: str = "dbname={} user={} password={} host={} port={} connect_timeout={} options='-c statement_timeout={}'".format(
+        settings.CABOODLE_DBNAME,  # type:ignore
+        settings.CABOODLE_USERNAME,  # type:ignore
+        settings.CABOODLE_PASSWORD,  # type:ignore
+        settings.CABOODLE_HOST,  # type:ignore
+        settings.CABOODLE_PORT,  # type:ignore
+        settings.CABOODLE_CONNECT_TIMEOUT,  # type:ignore
+        settings.CABOODLE_QUERY_TIMEOUT,  # type:ignore
+    )
+    connection_pool: pool.ThreadedConnectionPool
+
+    def connect(self):
+        """Set up connection to the database."""
+        self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
+
+    def get_airflow(self, start_datetime: datetime, end_datetime: datetime, csn: str):
+        """Retrieve airflow data from database."""
+        with open("src/sql/airway.sql", "r") as file:
+            airway_query = sql.SQL(file.read())
+        parameters = {
+            "start_datetime": start_datetime,
+            "end_datetime": end_datetime,
+            "csn": csn,
+        }
+        return self._get_rows(airway_query, parameters)
+
+    def _get_rows(self, sql_query: sql.SQL, parameters: dict):
+        try:
+            with self.connection_pool.getconn() as db_connection:
+                with db_connection.cursor() as curs:
+                    curs.execute(sql_query, parameters)
+                    rows = curs.fetchall()
+                self.connection_pool.putconn(db_connection)
+        except psycopg2.errors.OperationalError as e:
+            self.connection_pool.putconn(db_connection)
+            raise ConnectionError(f"Data base error: {e}")
+
+        return rows
