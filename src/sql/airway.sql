@@ -1,4 +1,4 @@
-
+-- extract airway data from caboodle for a specific csn and date
 SELECT
 lda._CreationInstant as DateTimeRecorded,
 lda.PlacementInstant,
@@ -16,5 +16,5 @@ AND enc.Type != 'Anaesthesia'
 AND frd.DisplayName like 'Single Lumen Tube Size'
 --and enc.PatientDurableKey = '1782941'
 
-AND lda._CreationInstant BETWEEN  %(yesterday)s AND %(today)s
+AND lda._CreationInstant BETWEEN  %(start_datetime)s AND %(end_datetime)s
 AND enc.EncounterEpicCsn = %(csn)
