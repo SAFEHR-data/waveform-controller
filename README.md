@@ -1,5 +1,7 @@
 A controller for reading waveform data from a rabbitmq queue and processing it.
 
+See [architecture overview diagram](https://github.com/SAFEHR-data/emap/blob/develop/docs/technical_overview/waveforms/pipeline.md)
+
 # Running the Code
 
 ## Pre-reqs

@@ -139,4 +139,5 @@ Waveform repo: `docker compose up -d`
 
 ### Replay old HL7 data
 
-Not yet supported, see https://github.com/SAFEHR-data/emap/issues/139
+See [the Waveform docs in Emap](https://github.com/SAFEHR-data/emap/edit/develop/docs/dev/features/waveform_hf_data.md)
+for how to replay old messages.
