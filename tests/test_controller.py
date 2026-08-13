@@ -7,6 +7,103 @@ import pytest
 from controller import WaveformController
 
 
+class FakeData:
+    def __init__(self, bad_data):
+        self.bad_data = bad_data
+        self.fake_data = FakeData._base_fake_data()
+
+    @staticmethod
+    def _base_fake_data() -> dict:
+        return {
+            "sourceSystem": None,
+            "sourceMessageId": "UCHT03ICURM09_t20240912080130_00003_1_10",
+            "sourceLocationString": "foo",
+            "sourceObservationType": "waveform",
+            "mappedVariableDescription": "P0.1 Occlusion Pressure",
+            "mappedLocationString": "loc",
+            "observationTime": datetime.now().timestamp(),
+            "sourceVariableId": "27",
+            "unit": "uV",
+        }
+
+
+class FakeHFData(FakeData):
+    def get_fake_data(self) -> dict:
+        self.fake_data["@class"] = (
+            "uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage"
+        )
+        # simulate a missing key
+        if not self.bad_data:
+            self.fake_data["sourceChannelId"] = "1"
+        self.fake_data["samplingRate"] = 50
+        self.fake_data["numericValues"] = {
+            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+            "value": [956.793, 945.615],
+            "status": "SAVE",
+        }
+        return self.fake_data
+
+    def get_expected_write_frame_args(self):
+        """If not bad data, what should write_frame be called with?"""
+        fd = self.fake_data
+        return (
+            fd["numericValues"],
+            fd["sourceVariableId"],
+            fd["sourceChannelId"],
+            fd["observationTime"],
+            fd["unit"],
+            fd["samplingRate"],
+            fd["mappedLocationString"],
+            "csn",
+            "mrn",
+        )
+
+
+class FakeLFData(FakeData):
+    def get_fake_data(self) -> dict:
+        self.fake_data["@class"] = (
+            "uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage"
+        )
+        self.fake_data["sourceValue"] = {
+            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+            "value": "0.8",
+            "status": "SAVE",
+        }
+        self.fake_data["numericValue"] = {
+            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+            "value": 0.8,
+            "status": "SAVE",
+        }
+        self.fake_data["stringValue"] = {
+            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+            "value": None,
+            "status": "IGNORE",
+        }
+        if self.bad_data:
+            # simulate a missing key
+            del self.fake_data["sourceVariableId"]
+        return self.fake_data
+
+    def get_expected_write_frame_args(self):
+        """If not bad data, what should write_frame be called with?"""
+        fd = self.fake_data
+        return (
+            fd["numericValues"],
+            fd["sourceVariableId"],
+            fd["sourceChannelId"],
+            fd["observationTime"],
+            fd["unit"],
+            fd["samplingRate"],
+            fd["mappedLocationString"],
+            "csn",
+            "mrn",
+        )
+
+
+@pytest.mark.parametrize(
+    "fake_data_class",
+    [FakeHFData, FakeLFData],
+)
 @pytest.mark.parametrize(
     "opt_out",
     [True, False],
@@ -19,7 +116,9 @@ from controller import WaveformController
     "bad_data",
     [True, False],
 )
-def test_controller_callback(monkeypatch, opt_out, db_connect_failure, bad_data):
+def test_controller_callback(
+    monkeypatch, fake_data_class, opt_out, db_connect_failure, bad_data
+):
     emap_db_mock = Mock()
     if db_connect_failure:
         emap_db_mock.get_row.side_effect = ConnectionError("mock database error")
@@ -30,19 +129,8 @@ def test_controller_callback(monkeypatch, opt_out, db_connect_failure, bad_data)
     write_frame_mock = Mock(return_value=True)
     monkeypatch.setattr("controller.writer.write_frame", write_frame_mock)
 
-    fake_data = {
-        "sourceLocationString": "foo",
-        "mappedLocationString": "loc",
-        "observationTime": datetime.now().timestamp(),
-        "sourceVariableId": "27",
-        "sourceChannelId": "1",
-        "samplingRate": 50,
-        "unit": "uV",
-        "numericValues": "[1,2,3]",
-    }
-    if bad_data:
-        # simulate a missing key
-        del fake_data["sourceChannelId"]
+    fake_data_obj = fake_data_class(bad_data=bad_data)
+    fake_data = fake_data_obj.get_fake_data()
     fake_data_str = json.dumps(fake_data)
     controller = WaveformController()
 
@@ -76,6 +164,7 @@ def test_controller_callback(monkeypatch, opt_out, db_connect_failure, bad_data)
         channel_mock.basic_ack.assert_not_called()
     else:
         # happy path
-        write_frame_mock.assert_called_once()
+        expected_write_frame_args = fake_data_obj.get_expected_write_frame_args()
+        write_frame_mock.assert_called_once_with(*expected_write_frame_args)
         channel_mock.basic_reject.assert_not_called()
         channel_mock.basic_ack.assert_called_once_with(delivery_tag)
