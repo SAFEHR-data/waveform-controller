@@ -8,8 +8,8 @@ from controller import WaveformController
 
 
 class FakeData:
-    def __init__(self, bad_data):
-        self.bad_data = bad_data
+    def __init__(self, missing_key):
+        self.missing_key = missing_key
         self.fake_data = FakeData._base_fake_data()
 
     @staticmethod
@@ -30,10 +30,10 @@ class FakeData:
 class FakeHFData(FakeData):
     def get_fake_data(self) -> dict:
         self.fake_data["@class"] = (
-            "uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage"
+            "uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage"
         )
         # simulate a missing key
-        if not self.bad_data:
+        if not self.missing_key:
             self.fake_data["sourceChannelId"] = "1"
         self.fake_data["samplingRate"] = 50
         self.fake_data["numericValues"] = {
@@ -43,20 +43,20 @@ class FakeHFData(FakeData):
         }
         return self.fake_data
 
-    def get_expected_write_frame_args(self):
+    def get_expected_write_frame_kwargs(self):
         """If not bad data, what should write_frame be called with?"""
         fd = self.fake_data
-        return (
-            fd["numericValues"],
-            fd["sourceVariableId"],
-            fd["sourceChannelId"],
-            fd["observationTime"],
-            fd["unit"],
-            fd["samplingRate"],
-            fd["mappedLocationString"],
-            "csn",
-            "mrn",
-        )
+        return {
+            "waveform_data": fd["numericValues"]["value"],
+            "source_variable_id": fd["sourceVariableId"],
+            "source_channel_id": fd["sourceChannelId"],
+            "observation_timestamp": fd["observationTime"],
+            "units": fd["unit"],
+            "sampling_rate": fd["samplingRate"],
+            "mapped_location_string": fd["mappedLocationString"],
+            "csn": "csn",
+            "mrn": "mrn",
+        }
 
 
 class FakeLFData(FakeData):
@@ -79,25 +79,25 @@ class FakeLFData(FakeData):
             "value": None,
             "status": "IGNORE",
         }
-        if self.bad_data:
+        if self.missing_key:
             # simulate a missing key
             del self.fake_data["sourceVariableId"]
         return self.fake_data
 
-    def get_expected_write_frame_args(self):
+    def get_expected_write_frame_kwargs(self):
         """If not bad data, what should write_frame be called with?"""
         fd = self.fake_data
-        return (
-            fd["numericValues"],
-            fd["sourceVariableId"],
-            fd["sourceChannelId"],
-            fd["observationTime"],
-            fd["unit"],
-            fd["samplingRate"],
-            fd["mappedLocationString"],
-            "csn",
-            "mrn",
-        )
+        return {
+            "waveform_data": fd["numericValues"]["value"],
+            "source_variable_id": fd["sourceVariableId"],
+            "source_channel_id": fd["sourceChannelId"],
+            "observation_timestamp": fd["observationTime"],
+            "units": fd["unit"],
+            "sampling_rate": fd["samplingRate"],
+            "mapped_location_string": fd["mappedLocationString"],
+            "csn": "csn",
+            "mrn": "mrn",
+        }
 
 
 @pytest.mark.parametrize(
@@ -113,11 +113,12 @@ class FakeLFData(FakeData):
     [True, False],
 )
 @pytest.mark.parametrize(
-    "bad_data",
-    [True, False],
+    "bad_data_type",
+    # 0 is not bad data, 1,2,3 are various different kinds of bad data
+    range(4),
 )
 def test_controller_callback(
-    monkeypatch, fake_data_class, opt_out, db_connect_failure, bad_data
+    monkeypatch, fake_data_class, opt_out, db_connect_failure, bad_data_type
 ):
     emap_db_mock = Mock()
     if db_connect_failure:
@@ -129,8 +130,15 @@ def test_controller_callback(
     write_frame_mock = Mock(return_value=True)
     monkeypatch.setattr("controller.writer.write_frame", write_frame_mock)
 
-    fake_data_obj = fake_data_class(bad_data=bad_data)
+    # Simulate various kinds of bad data. Make sure to keep the range parameter
+    # bad_data_type up to date with the number of possible failures
+    fake_data_obj = fake_data_class(missing_key=(bad_data_type == 1))
     fake_data = fake_data_obj.get_fake_data()
+    match bad_data_type:
+        case 2:
+            del fake_data["@class"]
+        case 3:
+            fake_data["@class"] = fake_data["@class"].replace("e", "x")
     fake_data_str = json.dumps(fake_data)
     controller = WaveformController()
 
@@ -142,11 +150,11 @@ def test_controller_callback(
 
     controller.waveform_callback(channel_mock, method_frame_mock, None, fake_data_str)
 
-    if not bad_data:
+    if not bad_data_type:
         # we at least tried to query the DB
         emap_db_mock.get_row.assert_called_once()
 
-    if bad_data:
+    if bad_data_type:
         write_frame_mock.assert_not_called()
         # db should not even have been queried if data was bad
         emap_db_mock.get_row.assert_not_called()
@@ -164,7 +172,7 @@ def test_controller_callback(
         channel_mock.basic_ack.assert_not_called()
     else:
         # happy path
-        expected_write_frame_args = fake_data_obj.get_expected_write_frame_args()
-        write_frame_mock.assert_called_once_with(*expected_write_frame_args)
+        expected_write_frame_kwargs = fake_data_obj.get_expected_write_frame_kwargs()
+        write_frame_mock.assert_called_once_with(**expected_write_frame_kwargs)
         channel_mock.basic_reject.assert_not_called()
         channel_mock.basic_ack.assert_called_once_with(delivery_tag)

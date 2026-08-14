@@ -2,6 +2,7 @@
 
 import csv
 from datetime import datetime
+from typing import Optional
 
 from locations import WAVEFORM_ORIGINAL_CSV, make_file_name, FILE_STEM_PATTERN
 
@@ -30,7 +31,10 @@ def create_file_name(
 
 
 def write_frame(
-    waveform_data: dict,
+    *,
+    waveform_data: Optional[str] = None,
+    single_value_str: Optional[str] = None,
+    single_value_numeric: Optional[float] = None,
     source_variable_id: str,
     source_channel_id: str,
     observation_timestamp: float,
@@ -40,10 +44,24 @@ def write_frame(
     csn: str,
     mrn: str,
 ) -> bool:
-    """Appends a frame of waveform data to a csv file (creates file if it doesn't exist.
+    """Appends a frame of waveform data to a csv file (creates file if it doesn't
+    exist). Exactly ONE of waveform_data, single_value_str, single_value_numeric must
+    contain a non-None value. :param waveform_data: The waveform data to write, as a
+    JSON value string of comma-separated numerics. Ie. as it comes straight out of the
+    interchange message. :single_value_str: The single value string of the waveform
+    data. :single_value_numeric: The single value string of the waveform data.
 
     :return: True if write was successful.
     """
+    num_non_nones = sum(
+        1
+        for x in (waveform_data, single_value_str, single_value_numeric)
+        if x is not None
+    )
+    if num_non_nones != 1:
+        raise ValueError(
+            "Exactly ONE of waveform_data, single_value_str, single_value_numeric must be not None"
+        )
     observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
     filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
@@ -60,7 +78,6 @@ def write_frame(
 
     with open(filename, "a") as fileout:
         wv_writer = csv.writer(fileout, delimiter=",")
-        waveform_data = waveform_data.get("value", "")
 
         wv_writer.writerow(
             [

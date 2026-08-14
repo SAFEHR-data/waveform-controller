@@ -33,15 +33,15 @@ def test_create_file_name_handles_units(
     mrn = "whatever"
 
     csv_writer.write_frame(
-        {"value": "[1,2,3]"},
-        variable_id,
-        channel_id,
-        observation_time.timestamp(),
-        units,
-        50,
-        "mapped loc",
-        csn,
-        mrn,
+        waveform_data="[1,2,3]",
+        source_variable_id=variable_id,
+        source_channel_id=channel_id,
+        observation_timestamp=observation_time.timestamp(),
+        units=units,
+        sampling_rate=50,
+        mapped_location_string="mapped loc",
+        csn=csn,
+        mrn=mrn,
     )
 
     # check that we can find the data again in its expected place

@@ -3,13 +3,17 @@ A script to receive messages in the waveform queue and write them to stdout,
 based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 """
 
-import json
 from datetime import datetime, timezone
 import logging
 import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
+from emap_interchange.messages import (
+    WaveformBaseMessage,
+    WaveformHighFreqMessage,
+    WaveformLowFreqMessage,
+)
 
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -48,16 +52,28 @@ class WaveformController:
 
     def waveform_callback(self, ch, method_frame, _header_frame, body):
         logger.debug("Message received of length %s", len(body))
-        data = json.loads(body)
         try:
-            location_string = data["mappedLocationString"]
-            observation_timestamp = data["observationTime"]
-            source_variable_id = data["sourceVariableId"]
-            source_channel_id = data["sourceChannelId"]
-            sampling_rate = data["samplingRate"]
-            units = data["unit"]
-            waveform_data = data["numericValues"]
-            mapped_location_string = data["mappedLocationString"]
+            message = WaveformBaseMessage.from_json(body)
+        except TypeError as e:
+            logger.error("Skipping, could not understand message type %s", e)
+            reject_message(ch, method_frame.delivery_tag, False)
+            return
+
+        try:
+            data_kwarg = {}
+            location_string = message.get_mapped_location_string()
+            observation_timestamp = message.get_observation_time()
+            source_variable_id = message.get_source_variable_id()
+            units = message.get_unit()
+            mapped_location_string = message.get_mapped_location_string()
+            if isinstance(message, WaveformHighFreqMessage):
+                sampling_rate = message.get_sampling_rate()
+                source_channel_id = message.get_source_channel_id()
+                waveform_data = message.get_numeric_values()
+                data_kwarg["waveform_data"] = waveform_data
+            elif isinstance(message, WaveformLowFreqMessage):
+                data_kwarg["single_value_str"] = message.get_string_value()
+                data_kwarg["single_value_numeric"] = message.get_numeric_value()
             logger.debug(
                 "Message is for loc %s, var %s, ch %s",
                 location_string,
@@ -98,15 +114,15 @@ class WaveformController:
             return
 
         if writer.write_frame(
-            waveform_data,
-            source_variable_id,
-            source_channel_id,
-            observation_timestamp,
-            units,
-            sampling_rate,
-            mapped_location_string,
-            csn,
-            mrn,
+            source_variable_id=source_variable_id,
+            source_channel_id=source_channel_id,
+            observation_timestamp=observation_timestamp,
+            units=units,
+            sampling_rate=sampling_rate,
+            mapped_location_string=mapped_location_string,
+            csn=csn,
+            mrn=mrn,
+            **data_kwarg,
         ):
             if lookup_success:
                 ack_message(ch, method_frame.delivery_tag)
