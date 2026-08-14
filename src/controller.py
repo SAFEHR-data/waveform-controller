@@ -67,19 +67,34 @@ class WaveformController:
             units = message.get_unit()
             mapped_location_string = message.get_mapped_location_string()
             if isinstance(message, WaveformHighFreqMessage):
-                sampling_rate = message.get_sampling_rate()
-                source_channel_id = message.get_source_channel_id()
+                data_kwarg["sampling_rate"] = message.get_sampling_rate()
+                data_kwarg["source_channel_id"] = message.get_source_channel_id()
                 waveform_data = message.get_numeric_values()
-                data_kwarg["waveform_data"] = waveform_data
+                data_kwarg["values"] = waveform_data
+                logger.debug(
+                    "WaveformHighFreqMessage is for loc %s, var %s, ch %s",
+                    location_string,
+                    source_variable_id,
+                    data_kwarg["source_channel_id"],
+                )
             elif isinstance(message, WaveformLowFreqMessage):
-                data_kwarg["single_value_str"] = message.get_string_value()
-                data_kwarg["single_value_numeric"] = message.get_numeric_value()
-            logger.debug(
-                "Message is for loc %s, var %s, ch %s",
-                location_string,
-                source_variable_id,
-                source_channel_id,
-            )
+                string_value = message.get_string_value()
+                if string_value is not None:
+                    data_kwarg["string_value"] = string_value
+
+                numeric_value = message.get_numeric_value()
+                if numeric_value is not None:
+                    data_kwarg["numeric_value"] = numeric_value
+
+                logger.debug(
+                    "WaveformLowFreqMessage is for loc %s, var %s",
+                    location_string,
+                    source_variable_id,
+                )
+            else:
+                raise RuntimeError(
+                    "Unrecognized message type but should have dealt with this by now?"
+                )
         except KeyError as e:
             reject_message(ch, method_frame.delivery_tag, False)
             logger.error(
@@ -115,10 +130,8 @@ class WaveformController:
 
         if writer.write_frame(
             source_variable_id=source_variable_id,
-            source_channel_id=source_channel_id,
             observation_timestamp=observation_timestamp,
             units=units,
-            sampling_rate=sampling_rate,
             mapped_location_string=mapped_location_string,
             csn=csn,
             mrn=mrn,

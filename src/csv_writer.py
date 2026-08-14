@@ -9,7 +9,7 @@ from locations import WAVEFORM_ORIGINAL_CSV, make_file_name, FILE_STEM_PATTERN
 
 def create_file_name(
     source_variable_id: str,
-    source_channel_id: str,
+    source_channel_id: Optional[str],
     observation_time: datetime,
     csn: str,
     units: str,
@@ -32,35 +32,33 @@ def create_file_name(
 
 def write_frame(
     *,
-    waveform_data: Optional[str] = None,
-    single_value_str: Optional[str] = None,
-    single_value_numeric: Optional[float] = None,
+    values: Optional[str] = None,
+    string_value: Optional[str] = None,
+    numeric_value: Optional[float] = None,
     source_variable_id: str,
-    source_channel_id: str,
+    source_channel_id: Optional[str] = None,
     observation_timestamp: float,
     units: str,
-    sampling_rate: int,
+    sampling_rate: Optional[int] = None,
     mapped_location_string: str,
     csn: str,
     mrn: str,
 ) -> bool:
     """Appends a frame of waveform data to a csv file (creates file if it doesn't
-    exist). Exactly ONE of waveform_data, single_value_str, single_value_numeric must
-    contain a non-None value. :param waveform_data: The waveform data to write, as a
-    JSON value string of comma-separated numerics. Ie. as it comes straight out of the
-    interchange message. :single_value_str: The single value string of the waveform
-    data. :single_value_numeric: The single value string of the waveform data.
+    exist). Exactly ONE of values, string_value, numeric_value must contain a non-None
+    value. :param values: The waveform data to write, as a JSON value string of comma-
+    separated numerics. Ie. as it comes straight out of the interchange message.
+    :string_value: The single value string of the waveform data. :numeric_value: The
+    single value string of the waveform data.
 
     :return: True if write was successful.
     """
     num_non_nones = sum(
-        1
-        for x in (waveform_data, single_value_str, single_value_numeric)
-        if x is not None
+        1 for x in (values, string_value, numeric_value) if x is not None
     )
     if num_non_nones != 1:
         raise ValueError(
-            "Exactly ONE of waveform_data, single_value_str, single_value_numeric must be not None"
+            "Exactly ONE of values, string_value, numeric_value must be not None"
         )
     observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
@@ -69,18 +67,24 @@ def write_frame(
     )
     filename.parent.mkdir(exist_ok=True, parents=True)
 
+    if values is not None:
+        # HF
+        csv_header = "csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,values\n"
+    else:
+        # LF
+        csv_header = "csn,mrn,source_variable_id,units,timestamp,location,string_value,numeric_value\n"
     # write header if is new file
     if not filename.exists():
         with open(filename, "w") as fileout:
-            fileout.write(
-                "csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,values\n"
-            )
+            fileout.write(csv_header)
 
     with open(filename, "a") as fileout:
-        wv_writer = csv.writer(fileout, delimiter=",")
+        # predictable quoting makes testing easier
+        wv_writer = csv.writer(fileout, delimiter=",", quoting=csv.QUOTE_ALL)
 
-        wv_writer.writerow(
-            [
+        if values is not None:
+            # HF
+            row_array = [
                 csn,
                 mrn,
                 source_variable_id,
@@ -89,8 +93,20 @@ def write_frame(
                 sampling_rate,
                 observation_timestamp,
                 mapped_location_string,
-                waveform_data,
+                values,
             ]
-        )
+        else:
+            row_array = [
+                csn,
+                mrn,
+                source_variable_id,
+                units,
+                observation_timestamp,
+                mapped_location_string,
+                string_value if string_value is not None else "",
+                numeric_value if numeric_value is not None else "",
+            ]
+
+        wv_writer.writerow(row_array)
 
     return True

@@ -1,3 +1,4 @@
+import copy
 import json
 from datetime import datetime
 from unittest.mock import Mock
@@ -8,9 +9,13 @@ from controller import WaveformController
 
 
 class FakeData:
-    def __init__(self, missing_key):
+    """Fake data to be used for building an Emap-Interchange JSON string for testing
+    purposes."""
+
+    def __init__(self, missing_key, value_type):
         self.missing_key = missing_key
         self.fake_data = FakeData._base_fake_data()
+        self.value_type = value_type
 
     @staticmethod
     def _base_fake_data() -> dict:
@@ -43,11 +48,11 @@ class FakeHFData(FakeData):
         }
         return self.fake_data
 
-    def get_expected_write_frame_kwargs(self):
+    def get_expected_write_frame_kwargs(self) -> dict:
         """If not bad data, what should write_frame be called with?"""
         fd = self.fake_data
         return {
-            "waveform_data": fd["numericValues"]["value"],
+            "values": fd["numericValues"]["value"],
             "source_variable_id": fd["sourceVariableId"],
             "source_channel_id": fd["sourceChannelId"],
             "observation_timestamp": fd["observationTime"],
@@ -64,42 +69,68 @@ class FakeLFData(FakeData):
         self.fake_data["@class"] = (
             "uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage"
         )
-        self.fake_data["sourceValue"] = {
-            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
-            "value": "0.8",
-            "status": "SAVE",
-        }
-        self.fake_data["numericValue"] = {
-            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
-            "value": 0.8,
-            "status": "SAVE",
-        }
-        self.fake_data["stringValue"] = {
+
+        ignore_val = {
             "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
             "value": None,
             "status": "IGNORE",
+        }
+        if self.value_type == "numeric":
+            source_val = "0.8"
+            self.fake_data["numericValue"] = {
+                "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+                "value": 0.8,
+                "status": "SAVE",
+            }
+            self.fake_data["stringValue"] = copy.copy(ignore_val)
+        elif self.value_type == "string":
+            source_val = "some categorical"
+            self.fake_data["stringValue"] = {
+                "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+                "value": source_val,
+                "status": "SAVE",
+            }
+            self.fake_data["numericValue"] = copy.copy(ignore_val)
+        else:
+            raise ValueError("must be numeric or string")
+        self.fake_data["sourceValue"] = {
+            "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
+            "value": source_val,
+            "status": "SAVE",
         }
         if self.missing_key:
             # simulate a missing key
             del self.fake_data["sourceVariableId"]
         return self.fake_data
 
-    def get_expected_write_frame_kwargs(self):
-        """If not bad data, what should write_frame be called with?"""
+    def get_expected_write_frame_kwargs(self) -> dict:
+        """If not bad data, what should write_frame be called with?
+
+        Keys: CSV file column names
+        Values: using interchange field names
+        """
         fd = self.fake_data
-        return {
-            "waveform_data": fd["numericValues"]["value"],
+        expected = {
             "source_variable_id": fd["sourceVariableId"],
-            "source_channel_id": fd["sourceChannelId"],
             "observation_timestamp": fd["observationTime"],
             "units": fd["unit"],
-            "sampling_rate": fd["samplingRate"],
             "mapped_location_string": fd["mappedLocationString"],
             "csn": "csn",
             "mrn": "mrn",
         }
 
+        if self.value_type == "numeric":
+            expected["numeric_value"] = fd["numericValue"]["value"]
+        elif self.value_type == "string":
+            expected["string_value"] = fd["stringValue"]["value"]
+        return expected
 
+
+@pytest.mark.parametrize(
+    # only affect LF tests so is redundant for HF
+    "lf_value_type",
+    ["string", "numeric"],
+)
 @pytest.mark.parametrize(
     "fake_data_class",
     [FakeHFData, FakeLFData],
@@ -118,7 +149,12 @@ class FakeLFData(FakeData):
     range(4),
 )
 def test_controller_callback(
-    monkeypatch, fake_data_class, opt_out, db_connect_failure, bad_data_type
+    monkeypatch,
+    lf_value_type,
+    fake_data_class,
+    opt_out,
+    db_connect_failure,
+    bad_data_type,
 ):
     emap_db_mock = Mock()
     if db_connect_failure:
@@ -132,7 +168,9 @@ def test_controller_callback(
 
     # Simulate various kinds of bad data. Make sure to keep the range parameter
     # bad_data_type up to date with the number of possible failures
-    fake_data_obj = fake_data_class(missing_key=(bad_data_type == 1))
+    fake_data_obj = fake_data_class(
+        missing_key=(bad_data_type == 1), value_type=lf_value_type
+    )
     fake_data = fake_data_obj.get_fake_data()
     match bad_data_type:
         case 2:
