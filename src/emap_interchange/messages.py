@@ -75,8 +75,8 @@ class WaveformHighFreqMessage(WaveformBaseMessage):
         """Sampling rate in Hz."""
         return self.data["samplingRate"]
 
-    def get_numeric_values(self):
-        """Numeric array."""
+    def get_numeric_values(self) -> list[float]:
+        """Numeric array as a list of floats."""
         return self.data["numericValues"]["value"]
 
 
@@ -85,7 +85,7 @@ class WaveformLowFreqMessage(WaveformBaseMessage):
         """Unmapped value."""
         return self.data["sourceValue"]["value"]
 
-    def get_numeric_value(self):
+    def get_numeric_value(self) -> float:
         """Mapped value, if it's a numerical value."""
         return self.data["numericValue"]["value"]
 

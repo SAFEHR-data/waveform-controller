@@ -59,24 +59,26 @@ def test_create_csv_low_freq(
     csn = "12345678"
     mrn = "whatever"
 
-    # it creates a separate file for each unit, so this becomes quite messy
-    expected_header = "csn,mrn,source_variable_id,units,timestamp,location,string_value,numeric_value\n"
+    # it creates a separate file for each unit, so we needs an expected text for each unit
+    expected_header = "csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,numeric_values,string_values\n"
     expected_texts = dict.fromkeys(units, expected_header)
     for idx, u in enumerate(units):
         v = values[idx]
+        string_values = numeric_values = None
         if type(v) is str:
-            value_kwarg = {"string_value": v}
-            expected_v_str = v
+            string_values = [v]
+            expected_v_str = f"['{v}']"
             expected_v_num = ""
         elif type(v) is float or type(v) is int:
-            value_kwarg = {"numeric_value": v}
+            numeric_values = [v]
             expected_v_str = ""
-            expected_v_num = str(v)
+            expected_v_num = f"[{v}]"
         else:
             raise ValueError(v)
 
         csv_writer.write_frame(
-            **value_kwarg,
+            string_values=string_values,
+            numeric_values=numeric_values,
             source_variable_id=variable_id,
             observation_timestamp=observation_time.timestamp(),
             units=u,
@@ -84,14 +86,11 @@ def test_create_csv_low_freq(
             csn=csn,
             mrn=mrn,
         )
-        expected_line = (
-            f'"12345678","whatever","{variable_id}","{u}","1735726210.0",'
-            f'"mapped loc","{expected_v_str}","{expected_v_num}"\n'
-        )
+        expected_line = f'"12345678","whatever","{variable_id}","","{u}","","1735726210.0","mapped loc","{expected_v_num}","{expected_v_str}"\n'
         expected_texts[u] += expected_line
-    # need to check all files now
+    # need to check multiple files for multiple units
     for idx, ef in enumerate(expected_filenames):
-        _check_write_csv(ef, expected_texts[units[idx]])
+        _check_written_csv(ef, expected_texts[units[idx]])
 
 
 @pytest.mark.parametrize(
@@ -118,7 +117,7 @@ def test_create_csv_high_freq(
     mrn = "whatever"
 
     csv_writer.write_frame(
-        values="[1,2,3]",
+        numeric_values=[1, 2, 3.0],
         source_variable_id=variable_id,
         source_channel_id=channel_id,
         observation_timestamp=observation_time.timestamp(),
@@ -130,10 +129,10 @@ def test_create_csv_high_freq(
     )
 
     expected_text = (
-        'csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,values\n'
-        f'"12345678","whatever","{variable_id}","{channel_id or ""}","{units}","50","1735726210.0","mapped loc","[1,2,3]"\n'
+        'csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,numeric_values,string_values\n'
+        f'"12345678","whatever","{variable_id}","{channel_id or ""}","{units}","50","1735726210.0","mapped loc","[1, 2, 3.0]",""\n'
     )
-    _check_write_csv(expected_filename, expected_text)
+    _check_written_csv(expected_filename, expected_text)
 
 
 def _setup_write_csv(monkeypatch, tmp_path):
@@ -147,7 +146,7 @@ def _setup_write_csv(monkeypatch, tmp_path):
     original_csv_dir.parent.mkdir(parents=True, exist_ok=True)
 
 
-def _check_write_csv(expected_filename, expected_text):
+def _check_written_csv(expected_filename, expected_text):
     # check that we can find the data again in its expected place
     expected_csv_path = locations.WAVEFORM_ORIGINAL_CSV / expected_filename
     assert os.path.exists(expected_csv_path)

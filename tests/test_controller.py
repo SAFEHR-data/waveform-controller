@@ -52,7 +52,8 @@ class FakeHFData(FakeData):
         """If not bad data, what should write_frame be called with?"""
         fd = self.fake_data
         return {
-            "values": fd["numericValues"]["value"],
+            "numeric_values": fd["numericValues"]["value"],
+            "string_values": None,  # HF is always numeric
             "source_variable_id": fd["sourceVariableId"],
             "source_channel_id": fd["sourceChannelId"],
             "observation_timestamp": fd["observationTime"],
@@ -112,17 +113,22 @@ class FakeLFData(FakeData):
         fd = self.fake_data
         expected = {
             "source_variable_id": fd["sourceVariableId"],
+            "source_channel_id": None,
             "observation_timestamp": fd["observationTime"],
             "units": fd["unit"],
+            "sampling_rate": None,
             "mapped_location_string": fd["mappedLocationString"],
             "csn": "csn",
             "mrn": "mrn",
         }
 
-        if self.value_type == "numeric":
-            expected["numeric_value"] = fd["numericValue"]["value"]
-        elif self.value_type == "string":
-            expected["string_value"] = fd["stringValue"]["value"]
+        # LF may be string or numeric
+        expected["numeric_values"] = (
+            [fd["numericValue"]["value"]] if self.value_type == "numeric" else None
+        )
+        expected["string_values"] = (
+            [fd["stringValue"]["value"]] if self.value_type == "string" else None
+        )
         return expected
 
 
@@ -174,8 +180,10 @@ def test_controller_callback(
     fake_data = fake_data_obj.get_fake_data()
     match bad_data_type:
         case 2:
+            # message type field missing
             del fake_data["@class"]
         case 3:
+            # message type field present but unrecognised
             fake_data["@class"] = fake_data["@class"].replace("e", "x")
     fake_data_str = json.dumps(fake_data)
     controller = WaveformController()

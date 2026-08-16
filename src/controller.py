@@ -5,6 +5,7 @@ based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 
 from datetime import datetime, timezone
 import logging
+
 import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
@@ -60,31 +61,35 @@ class WaveformController:
             return
 
         try:
-            data_kwarg = {}
             location_string = message.get_mapped_location_string()
             observation_timestamp = message.get_observation_time()
             source_variable_id = message.get_source_variable_id()
             units = message.get_unit()
             mapped_location_string = message.get_mapped_location_string()
+            source_channel_id = None
+            sampling_rate = None
+            numeric_values = None
+            string_values = None
             if isinstance(message, WaveformHighFreqMessage):
-                data_kwarg["sampling_rate"] = message.get_sampling_rate()
-                data_kwarg["source_channel_id"] = message.get_source_channel_id()
-                waveform_data = message.get_numeric_values()
-                data_kwarg["values"] = waveform_data
+                sampling_rate = message.get_sampling_rate()
+                source_channel_id = message.get_source_channel_id()
+                numeric_values = message.get_numeric_values()
                 logger.debug(
                     "WaveformHighFreqMessage is for loc %s, var %s, ch %s",
                     location_string,
                     source_variable_id,
-                    data_kwarg["source_channel_id"],
+                    source_channel_id,
                 )
             elif isinstance(message, WaveformLowFreqMessage):
+                # Wrap single values in arrays so they can go in the same
+                # CSV (and parquet...) columns as for HF
                 string_value = message.get_string_value()
                 if string_value is not None:
-                    data_kwarg["string_value"] = string_value
+                    string_values = [string_value]
 
                 numeric_value = message.get_numeric_value()
                 if numeric_value is not None:
-                    data_kwarg["numeric_value"] = numeric_value
+                    numeric_values = [numeric_value]
 
                 logger.debug(
                     "WaveformLowFreqMessage is for loc %s, var %s",
@@ -130,12 +135,15 @@ class WaveformController:
 
         if writer.write_frame(
             source_variable_id=source_variable_id,
+            source_channel_id=source_channel_id,
+            sampling_rate=sampling_rate,
             observation_timestamp=observation_timestamp,
             units=units,
             mapped_location_string=mapped_location_string,
             csn=csn,
             mrn=mrn,
-            **data_kwarg,
+            numeric_values=numeric_values,
+            string_values=string_values,
         ):
             if lookup_success:
                 ack_message(ch, method_frame.delivery_tag)

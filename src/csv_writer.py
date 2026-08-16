@@ -32,9 +32,8 @@ def create_file_name(
 
 def write_frame(
     *,
-    values: Optional[str] = None,
-    string_value: Optional[str] = None,
-    numeric_value: Optional[float] = None,
+    numeric_values: Optional[list[float]] = None,
+    string_values: Optional[list[str]] = None,
     source_variable_id: str,
     source_channel_id: Optional[str] = None,
     observation_timestamp: float,
@@ -45,20 +44,14 @@ def write_frame(
     mrn: str,
 ) -> bool:
     """Appends a frame of waveform data to a csv file (creates file if it doesn't
-    exist). Exactly ONE of values, string_value, numeric_value must contain a non-None
-    value. :param values: The waveform data to write, as a JSON value string of comma-
-    separated numerics. Ie. as it comes straight out of the interchange message.
-    :string_value: The single value string of the waveform data. :numeric_value: The
-    single value string of the waveform data.
+    exist). Exactly ONE of string_values, numeric_values must contain a non-None value.
 
     :return: True if write was successful.
     """
-    num_non_nones = sum(
-        1 for x in (values, string_value, numeric_value) if x is not None
-    )
+    num_non_nones = sum(1 for x in (string_values, numeric_values) if x is not None)
     if num_non_nones != 1:
         raise ValueError(
-            "Exactly ONE of values, string_value, numeric_value must be not None"
+            "Exactly ONE of string_values, numeric_values must be not None"
         )
     observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
@@ -67,12 +60,10 @@ def write_frame(
     )
     filename.parent.mkdir(exist_ok=True, parents=True)
 
-    if values is not None:
-        # HF
-        csv_header = "csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,values\n"
-    else:
-        # LF
-        csv_header = "csn,mrn,source_variable_id,units,timestamp,location,string_value,numeric_value\n"
+    # The CSV fields are the same regardless of HF vs LF, to keep downstream
+    # processing simpler. Some fields may be nulled out, however.
+    # Single values will be wrapped in an array of length 1, if necessary.
+    csv_header = "csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,numeric_values,string_values\n"
     # write header if is new file
     if not filename.exists():
         with open(filename, "w") as fileout:
@@ -82,30 +73,18 @@ def write_frame(
         # predictable quoting makes testing easier
         wv_writer = csv.writer(fileout, delimiter=",", quoting=csv.QUOTE_ALL)
 
-        if values is not None:
-            # HF
-            row_array = [
-                csn,
-                mrn,
-                source_variable_id,
-                source_channel_id,
-                units,
-                sampling_rate,
-                observation_timestamp,
-                mapped_location_string,
-                values,
-            ]
-        else:
-            row_array = [
-                csn,
-                mrn,
-                source_variable_id,
-                units,
-                observation_timestamp,
-                mapped_location_string,
-                string_value if string_value is not None else "",
-                numeric_value if numeric_value is not None else "",
-            ]
+        row_array = [
+            csn,
+            mrn,
+            source_variable_id,
+            source_channel_id if source_channel_id is not None else "",
+            units,
+            sampling_rate if sampling_rate is not None else "",
+            observation_timestamp,
+            mapped_location_string,
+            numeric_values if numeric_values is not None else "",
+            string_values if string_values is not None else "",
+        ]
 
         wv_writer.writerow(row_array)
 
