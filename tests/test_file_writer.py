@@ -67,7 +67,7 @@ def test_create_csv_low_freq(
         string_values = numeric_values = None
         if type(v) is str:
             string_values = [v]
-            expected_v_str = f"['{v}']"
+            expected_v_str = f'[""{v}""]'
             expected_v_num = ""
         elif type(v) is float or type(v) is int:
             numeric_values = [v]

@@ -1,6 +1,7 @@
 """Writes a frame of waveform data to a csv file."""
 
 import csv
+import json
 from datetime import datetime
 from typing import Optional
 
@@ -73,6 +74,8 @@ def write_frame(
         # predictable quoting makes testing easier
         wv_writer = csv.writer(fileout, delimiter=",", quoting=csv.QUOTE_ALL)
 
+        # Encode value lists as JSON so parquet conversion can use json.loads
+        # (Python list repr breaks on commas / quotes in string values).
         row_array = [
             csn,
             mrn,
@@ -82,8 +85,8 @@ def write_frame(
             sampling_rate if sampling_rate is not None else "",
             observation_timestamp,
             mapped_location_string,
-            numeric_values if numeric_values is not None else "",
-            string_values if string_values is not None else "",
+            json.dumps(numeric_values) if numeric_values is not None else "",
+            json.dumps(string_values) if string_values is not None else "",
         ]
 
         wv_writer.writerow(row_array)
