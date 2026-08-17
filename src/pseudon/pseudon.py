@@ -118,6 +118,9 @@ def csv_to_parquets(
     df["numeric_values"] = df["numeric_values"].apply(parse_numeric_values)
     df["string_values"] = df["string_values"].apply(parse_string_values)
 
+    # CSV row order follows RabbitMQ arrival, which is not guaranteed chronological.
+    df = df.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
+
     # Convert pandas DataFrame to pyarrow Table with proper types
     schema = pa.schema(
         [
@@ -154,7 +157,8 @@ def csv_to_parquets(
         # valid values: {‘NONE’, ‘SNAPPY’, ‘GZIP’, ‘BROTLI’, ‘LZ4’, ‘ZSTD’}
         compression="zstd",
         use_dictionary=True,
-        write_statistics=True,  # enable indexes/statistics
+        write_statistics=True,
+        write_page_index=True,
         flavor="spark",
     )
     logger.info(
@@ -181,7 +185,8 @@ def csv_to_parquets(
         str(hashed_path),
         compression="zstd",
         use_dictionary=True,
-        write_statistics=True,  # enable indexes/statistics
+        write_statistics=True,
+        write_page_index=True,
         flavor="spark",
     )
     logger.info(
