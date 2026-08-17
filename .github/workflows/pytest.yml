@@ -22,7 +22,7 @@ jobs:
         with:
           repository: SAFEHR-data/PIXL
           # this version requires some old versions of things, but we'll upgrade when we're ready
-          ref: 4a0a839
+          ref: 4a0a8392e982ce15aa84f4fdec76d425f4acd754  # pragma: allowlist secret
           path: PIXL
 
       - name: Install uv
