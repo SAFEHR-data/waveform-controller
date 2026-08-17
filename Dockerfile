@@ -14,6 +14,14 @@ COPY waveform-controller/pyproject.toml waveform-controller/uv.lock /app/
 RUN --mount=type=cache,target=${UVCACHE} uv pip install --system .
 COPY waveform-controller/. /app/
 RUN --mount=type=cache,target=${UVCACHE} uv pip install --system .
+# Optional: only for integration-test image builds (compose/build-arg INSTALL_COVERAGE=1).
+# Editable install so imports resolve under /app/src (matches source=["src"] for coverage).
+# coverage.py is inert unless COVERAGE_PROCESS_START is set.
+ARG INSTALL_COVERAGE=0
+RUN --mount=type=cache,target=${UVCACHE} \
+    if [ "$INSTALL_COVERAGE" = "1" ]; then \
+      uv pip install --system -e '.[coverage]'; \
+    fi
 FROM waveform_base AS waveform_controller
 CMD ["emap-extract-waveform"]
 FROM waveform_base AS waveform_exporter
