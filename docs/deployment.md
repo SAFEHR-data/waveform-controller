@@ -151,7 +151,7 @@ Note: timestamps must be parseable by Java's Instant.parse(). Ie. in ISO long fo
 
 Date intervals are half-open (inclusive on the start, exclusive on the end)
 
-`--source-location` is optional; all locations included if it's not specified.
+`--source-location` is optional; examples values: "UCHT03ICUBED19", "UCHT03ICURM08"; all locations included if not specified.
 
 Filtering by variable is not currently possible.
 
