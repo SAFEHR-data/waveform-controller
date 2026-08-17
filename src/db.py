@@ -1,4 +1,5 @@
 from datetime import datetime
+import pandas as pd
 import psycopg2
 from psycopg2 import sql, pool
 import logging
@@ -69,13 +70,24 @@ class caboodleDB:
         settings.CABOODLE_QUERY_TIMEOUT,  # type:ignore
     )
     connection_pool: pool.ThreadedConnectionPool
+    fake_caboodle: bool
 
     def connect(self):
         """Set up connection to the database."""
-        self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
+        self.fake_caboodle = True if settings.CABOODLE_TESTING == "TRUE" else False
+        if not self.fake_caboodle:
+            self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
 
     def get_airflow(self, start_datetime: datetime, end_datetime: datetime, csn: str):
         """Retrieve airflow data from database."""
+        if self.fake_caboodle:
+            fake_airway = {
+                "DateTimeRecorded": [0],
+                "PlacementInstant": [0],
+                "RemovalInstant": [0],
+                "TubeSize": [0],
+            }
+            return pd.DataFrame(data=fake_airway)
         with open("src/sql/airway.sql", "r") as file:
             airway_query = sql.SQL(file.read())
         parameters = {
