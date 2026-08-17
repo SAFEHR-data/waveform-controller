@@ -20,3 +20,8 @@ wheels/
 
 # pytest tmp paths
 .pytest_tmp
+
+# coverage
+.coverage
+coverage.xml
+htmlcov/
