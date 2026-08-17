@@ -52,24 +52,3 @@ services:
     env_file:
       - ../config/hasher.env
     restart: unless-stopped
-  ehr-lookup:
-    build:
-      context: ..
-      dockerfile: waveform-controller/Dockerfile
-      target: ehr-lookup
-      args:
-        HTTP_PROXY: ${HTTP_PROXY}
-        http_proxy: ${http_proxy}
-        HTTPS_PROXY: ${HTTPS_PROXY}
-        https_proxy: ${https_proxy}
-    # ideally we'd use docker secrets but it's not enabled currently
-    env_file:
-      - ../config/ehr_lookup.env
-    volumes:
-      - ../waveform-export:/waveform-export
-      # because we're launching through cron in the container, which starts
-      # processes with a clean environment, also mount in the config file so
-      # it can be read in by snakemake later
-      - ../config/ehr-lookup.env:/config/ehr-lookup.env:ro
-    restart: unless-stopped
- 
