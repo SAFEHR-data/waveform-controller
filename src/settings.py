@@ -37,6 +37,15 @@ get_from_env("FTPS_PASSWORD")
 get_from_env("HASHER_API_HOSTNAME")
 get_from_env("HASHER_API_PORT")
 
+get_from_env("CABOODLE_DBNAME")
+get_from_env("CABOODLE_USERNAME")
+get_from_env("CABOODLE_PASSWORD")
+get_from_env("CABOODLE_HOST")
+get_from_env("CABOODLE_PORT")
+get_from_env("CABOODLE_CONNECT_TIMEOUT")
+get_from_env("CABOODLE_QUERY_TIMEOUT")
+get_from_env("CABOODLE_TESTING")
+
 get_from_env("LOG_LEVEL", default_value="INFO")
 
 get_from_env("INSTANCE_NAME", required=True)

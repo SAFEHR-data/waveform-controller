@@ -7,3 +7,8 @@ CABOODLE_HOST="localhost"
 CABOODLE_PORT="5433"
 CABOODLE_CONNECT_TIMEOUT="10"  # in seconds
 CABOODLE_QUERY_TIMEOUT="3000"  # in milliseconds
+
+# To avoid having to deploy a fake caboodle for testing we have 
+# a testing flag for Caboodle. If set TRUE caboodle connection will
+# fail silently and ehr file will be created with fake data
+CABOODLE_TESTING="FALSE"
