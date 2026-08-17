@@ -153,9 +153,10 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     # ARRANGE
 
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
+    # Fractional seconds to ensure there's no integer rounding going on.
     file1 = TestFileDescription(
         "2025-01-01",
-        1735740780.0,
+        1735740780.25,
         "SECRET_CSN_1234",
         "SECRET_MRN_12345",
         "SECRET_LOCATION_123",
@@ -181,7 +182,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     # same day, different CSN
     file3 = TestFileDescription(
         "2025-01-01",
-        1735740783.0,
+        1735740783.25,
         "SECRET_CSN_1235",
         "SECRET_MRN_12346",
         "SECRET_LOCATION_123",
@@ -194,7 +195,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     # new day, first CSN again
     file4 = TestFileDescription(
         "2025-01-02",
-        1735801965.0,
+        1735801965,
         "SECRET_CSN_1234",
         "SECRET_MRN_12345",
         "SECRET_LOCATION_123",
@@ -207,7 +208,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     # low-frequency numeric (timestamps kept inside existing CSN_1234 day-1 range)
     file5_lf_numeric = TestFileDescription(
         "2025-01-01",
-        1735740770.0,
+        1735740770.25,
         "SECRET_CSN_1234",
         "SECRET_MRN_12345",
         "SECRET_LOCATION_123",
@@ -221,7 +222,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     # low-frequency string (timestamps kept inside existing CSN_1235 day-1 range)
     file6_lf_string = TestFileDescription(
         "2025-01-01",
-        1735740784.0,
+        1735740784.25,
         "SECRET_CSN_1235",
         "SECRET_MRN_12346",
         "SECRET_LOCATION_123",
