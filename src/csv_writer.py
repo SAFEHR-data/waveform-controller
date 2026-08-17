@@ -67,12 +67,15 @@ def write_frame(
     csv_header = "csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,numeric_values,string_values\n"
     # write header if is new file
     if not filename.exists():
-        with open(filename, "w") as fileout:
+        with open(filename, "w", newline="") as fileout:
             fileout.write(csv_header)
 
-    with open(filename, "a") as fileout:
+    # open with newline="" as per csv.writer docs
+    with open(filename, "a", newline="") as fileout:
         # predictable quoting makes testing easier
-        wv_writer = csv.writer(fileout, delimiter=",", quoting=csv.QUOTE_ALL)
+        wv_writer = csv.writer(
+            fileout, delimiter=",", quoting=csv.QUOTE_ALL, lineterminator="\n"
+        )
 
         # Encode value lists as JSON so parquet conversion can use json.loads
         # (Python list repr breaks on commas / quotes in string values).
