@@ -5,6 +5,7 @@ WAVEFORM_ORIGINAL_CSV = WAVEFORM_EXPORT_BASE / "original-csv"
 WAVEFORM_ORIGINAL_PARQUET = WAVEFORM_EXPORT_BASE / "original-parquet"
 WAVEFORM_HASH_LOOKUPS = WAVEFORM_EXPORT_BASE / "hash-lookups"
 WAVEFORM_PSEUDONYMISED_PARQUET = WAVEFORM_EXPORT_BASE / "pseudonymised"
+WAVEFORM_PSEUDONYMISED_EHR = WAVEFORM_EXPORT_BASE / "pseudonymised_ehr"
 WAVEFORM_SNAKEMAKE_LOGS = WAVEFORM_EXPORT_BASE / "snakemake-logs"
 WAVEFORM_FTPS_LOGS = WAVEFORM_EXPORT_BASE / "ftps-logs"
 
@@ -14,6 +15,8 @@ FILE_STEM_PATTERN = "{date}/{date}.{csn}.{variable_id}.{channel_id}.{units}"
 FILE_STEM_PATTERN_HASHED = (
     "{date}/{date}.{hashed_csn}.{variable_id}.{channel_id}.{units}"
 )
+# EHR data is per (date, csn), not per variable/channel/units, so it gets its own stem.
+EHR_STEM_PATTERN_HASHED = "{date}/{date}.{hashed_csn}"
 CSV_PATTERN = WAVEFORM_ORIGINAL_CSV / (FILE_STEM_PATTERN + ".csv")
 ORIGINAL_PARQUET_PATTERN = WAVEFORM_ORIGINAL_PARQUET / (FILE_STEM_PATTERN + ".parquet")
 PSEUDONYMISED_PARQUET_PATTERN = WAVEFORM_PSEUDONYMISED_PARQUET / (

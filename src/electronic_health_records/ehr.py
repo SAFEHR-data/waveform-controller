@@ -1,15 +1,31 @@
-import functools
 import logging
 
-import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from .hashing import do_hash
 from db import caboodleDB
+from csv_writer import write_ehr
+from pseudon.pseudon import pseudonymise_relevant_columns
 
 
-def ehr_for_csv(
-    datetime: datetime,
+def ehr_for_csv(date_str: str, original_csn: str, hashed_csn: str) -> None:
+    """Extracts electronic healthcare records for a given csn and writes the results to
+    a pseudonymised csv file for a single day.
+
+    This is a privacy-sensitive area of code. Unhashed CSNs must not appear in uploaded
+    files.
+    :param date_str: the date to look up data for
+    :param original_csn: the csn to base look up on.
+    :param hashed_csn: the pseudonymised hash to use for file output.
+    """
+
+    db_connection = caboodleDB()
+    db_connection.connect()
+
+    _ehr_for_csv(date_str, original_csn, hashed_csn, db_connection)
+
+
+def _ehr_for_csv(
+    date_str: str,
     original_csn: str,
     hashed_csn: str,
     db_connection: caboodleDB,
@@ -27,41 +43,24 @@ def ehr_for_csv(
     # will pick up the logger config defined in the snakemake job (ie. log to file)
     logger = logging.getLogger(__name__)
 
-    caboodle = caboodleDB()
-    caboodle.connect()
-
     logger.info("Looking for airway data for %s.", hashed_csn)
 
-    start_datetime = datetime
-    end_datetime = datetime
-    airflow = caboodle.get_airflow(start_datetime, end_datetime, original_csn)
-    airflow = pseudonymise_relevant_columns(airflow)
+    start_datetime = datetime.strptime(date_str, "%Y-%m-%d")
+    end_datetime = start_datetime + timedelta(days=1)
+    airflow = db_connection.get_airflow(start_datetime, end_datetime, original_csn)
+
+    safe_columns = [
+        "DateTimeRecorded",
+        "PlacementInstant",
+        "RemovalInstant",
+        "TubeSize",
+    ]
+
+    airflow = pseudonymise_relevant_columns(airflow, safe_columns)
+
+    write_ehr(airflow, date_str, hashed_csn)
+
     logger.info(airflow)
 
     # delete csn once we no longer need it
     del original_csn
-
-
-SAFE_COLUMNS = [
-    "sampling_rate",
-    "source_variable_id",
-    "source_channel_id",
-    "timestamp",
-    "units",
-    "values",
-]
-
-
-def pseudonymise_relevant_columns(df: pd.DataFrame):
-    """ "csn", "mrn", "location" are examples of columns that must be pseudonymised.
-
-    However, it's safer to list which columns *don't* need to be pseudonymised. Eg. you
-    add a column but forget to consider whether it's sensitive, OR you rename one of the
-    known sensitive columns and forget that this will cause privacy to break. This means
-    that when you add a new column, you have to add it here if you don't want it to be
-    hashed.
-    """
-    for col in df.columns:
-        if col not in SAFE_COLUMNS:
-            df[col] = df[col].apply(functools.partial(do_hash, col))
-    return df

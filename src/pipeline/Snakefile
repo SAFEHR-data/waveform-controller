@@ -15,9 +15,11 @@ from locations import (
     HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
     FILE_STEM_PATTERN_HASHED,
+    EHR_STEM_PATTERN_HASHED,
     make_file_name,
 )
 from pseudon.pseudon import csv_to_parquets
+from electronic_health_records.ehr import ehr_for_csv
 
 from utils import config_bool, determine_eventual_outputs
 
@@ -48,6 +50,7 @@ PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
 all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY, PROCESS_CSV_FROM_DATE)
 ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
+ALL_EHR_LOOKUPS = sorted({ao.get_ehr_lookup() for ao in all_outputs})
 
 def configure_file_logging(log_file):
     import logging
@@ -65,7 +68,8 @@ def configure_file_logging(log_file):
 rule all:
     input:
         ftps_uploaded = ALL_FTPS_UPLOADED,
-        daily_hash_lookups = ALL_DAILY_HASH_LOOKUPS
+        daily_hash_lookups = ALL_DAILY_HASH_LOOKUPS,
+        ehr_lookups = ALL_EHR_LOOKUPS
 
 rule all_ftps_uploaded:
     input:
@@ -74,6 +78,10 @@ rule all_ftps_uploaded:
 rule all_daily_hash_lookups:
     input:
         ALL_DAILY_HASH_LOOKUPS
+
+rule all_ehr_lookups:
+    input:
+        ALL_EHR_LOOKUPS
 
 def input_file_maker(wc):
     unhashed_csn = hash_to_csn[wc.hashed_csn]
@@ -114,6 +122,34 @@ rule csv_to_parquet:
 
 def pseudonymised_parquet_files_for_date(wc):
     return [ao.get_pseudonymised_parquet_path() for ao in all_outputs if ao.date == wc.date]
+
+
+def pseudonymised_parquet_files_for_date_and_hashed_csn(wc):
+    return [
+        ao.get_pseudonymised_parquet_path()
+        for ao in all_outputs
+        if ao.date == wc.date and ao.hashed_csn == wc.hashed_csn
+    ]
+
+
+rule ehr_lookup:
+    input:
+        # As with daily_hash_lookup, we lie to Snakemake that the input is the pseudon
+        # parquets for this csn/day, purely so this rule is tied into the dependency DAG
+        # and reruns if the underlying data for this csn/day changes.
+        pseudonymised_parquets = pseudonymised_parquet_files_for_date_and_hashed_csn
+    output:
+        WAVEFORM_PSEUDONYMISED_EHR / (EHR_STEM_PATTERN_HASHED + "_ehr.csv")
+    log:
+        WAVEFORM_SNAKEMAKE_LOGS / "ehr_lookup" / (EHR_STEM_PATTERN_HASHED + ".log")
+    run:
+        logger = configure_file_logging(log[0])
+        original_csn = hash_to_csn[wildcards.hashed_csn]
+        logger.info("Running EHR look up for csn %s. Hash -> %s", original_csn, wildcards.hashed_csn)
+        ehr_for_csv(
+            date_str=wildcards.date,
+            original_csn=original_csn,
+            hashed_csn=wildcards.hashed_csn)
 
 
 rule daily_hash_lookup:

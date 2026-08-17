@@ -142,7 +142,16 @@ def csv_to_parquets(
         "Done turning CSV %s to original parquet %s", csv_path, original_parquet_path
     )
 
-    df = pseudonymise_relevant_columns(df)
+    safe_columns = [
+        "sampling_rate",
+        "source_variable_id",
+        "source_channel_id",
+        "timestamp",
+        "units",
+        "values",
+    ]
+
+    df = pseudonymise_relevant_columns(df, safe_columns)
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
     # Use same metadata for pseudon, must not contain identifiers!
@@ -189,17 +198,7 @@ def add_waveform_metadata_to_table(
     return existing_table
 
 
-SAFE_COLUMNS = [
-    "sampling_rate",
-    "source_variable_id",
-    "source_channel_id",
-    "timestamp",
-    "units",
-    "values",
-]
-
-
-def pseudonymise_relevant_columns(df: pd.DataFrame):
+def pseudonymise_relevant_columns(df: pd.DataFrame, safe_columns: [str]):
     """ "csn", "mrn", "location" are examples of columns that must be pseudonymised.
 
     However, it's safer to list which columns *don't* need to be pseudonymised. Eg. you
@@ -209,6 +208,6 @@ def pseudonymise_relevant_columns(df: pd.DataFrame):
     hashed.
     """
     for col in df.columns:
-        if col not in SAFE_COLUMNS:
+        if col not in safe_columns:
             df[col] = df[col].apply(functools.partial(do_hash, col))
     return df
