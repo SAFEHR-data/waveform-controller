@@ -151,7 +151,10 @@ Note: timestamps must be parseable by Java's Instant.parse(). Ie. in ISO long fo
 
 Date intervals are half-open (inclusive on the start, exclusive on the end)
 
-`--source-location` is optional; examples values: "UCHT03ICUBED19", "UCHT03ICURM08"; all locations included if not specified.
+`--source-location` is optional; all locations included if not specified; examples values: "UCHT03ICUBED19", "UCHT03ICURM08"
+Here is the
+[full list of possible values](https://github.com/SAFEHR-data/emap/blob/main/waveform-generator/src/main/java/uk/ac/ucl/rits/inform/datasources/waveform_generator/Hl7Generator.java)
+
 
 Filtering by variable is not currently possible.
 
