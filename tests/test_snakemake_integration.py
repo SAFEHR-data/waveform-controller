@@ -207,9 +207,11 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
             tmp_path / "original-parquet" / filename.get_orig_parquet()
         )
         pseudon_path = tmp_path / "pseudonymised" / filename.get_pseudon_parquet()
+        ehr_path = tmp_path / "pseudonymised_ehr" / filename.get_pseudon_ehr()
 
         assert original_parquet_path.exists()
         assert pseudon_path.exists()
+        assert ehr_path.exists()
 
         _compare_original_parquet_to_expected(original_parquet_path, expected_data)
         _compare_parquets(original_parquet_path, pseudon_path)
