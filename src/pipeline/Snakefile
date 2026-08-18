@@ -83,6 +83,12 @@ rule all_ehr_lookups:
     input:
         ALL_EHR_LOOKUPS
 
+# a rule combining ehr and hash look ups to enable testing without ftps upload
+rule all_ehr_and_hash_lookups:
+    input:
+        ALL_EHR_LOOKUPS,
+        ALL_DAILY_HASH_LOOKUPS
+
 def input_file_maker(wc):
     unhashed_csn = hash_to_csn[wc.hashed_csn]
     # when using input functions, snakemake doesn't do its normal templating, you have to do it, hence the f-string
