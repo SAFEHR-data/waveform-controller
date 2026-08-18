@@ -76,7 +76,9 @@ class caboodleDB:
         """Set up connection to the database."""
         self.fake_caboodle = True if settings.CABOODLE_TESTING == "TRUE" else False
         if not self.fake_caboodle:
-            self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
+            self.connection_pool = pool.SimpleConnectionPool(
+                1, 1, self.connection_string
+            )
 
     def get_airflow(self, start_datetime: datetime, end_datetime: datetime, csn: str):
         """Retrieve airflow data from database."""
