@@ -21,4 +21,3 @@ on r.lab_order_id = o.lab_order_id
 where o.hospital_visit_id = 'xx'
 and r.result_status  like 'FINAL'
 and r.lab_test_definition_id in ('1001', '390793054', '390793057', '390793060', '722790196')
-

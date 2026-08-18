@@ -32,4 +32,3 @@ AND vo.valid_from BETWEEN %(yesterday)s AND %(today)s
 AND vo.hospital_visit_id = %(hospital_visit_id)s
 
 GROUP BY DateTimeRecorded, Units, vo.comment
-
