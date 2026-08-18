@@ -274,6 +274,7 @@ def _run_snakemake(tmp_path):
         "CSV_AGE_THRESHOLD_MINUTES=5\n"
         "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
         "PROCESS_CSV_FROM_DATE=\n"
+        "CABOODLE_TESTING=TRUE\n"
     )
     # run system under test (exporter container) in foreground
     compose_args = [
