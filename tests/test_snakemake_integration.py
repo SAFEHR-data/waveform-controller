@@ -268,7 +268,7 @@ def _run_snakemake(tmp_path):
     tmp_exporter_env_path = tmp_path / "config/exporter.env"
     tmp_exporter_env_path.parent.mkdir(exist_ok=True)
     tmp_exporter_env_path.write_text(
-        "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups\n"
+        "SNAKEMAKE_RULE_UNTIL=all_ehr_lookups\n"
         "SNAKEMAKE_CORES=1\n"
         "INSTANCE_NAME=pytest\n"
         "CSV_AGE_THRESHOLD_MINUTES=5\n"
