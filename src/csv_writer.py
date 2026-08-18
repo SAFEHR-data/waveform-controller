@@ -100,6 +100,6 @@ def write_ehr(
     filename = WAVEFORM_PSEUDONYMISED_EHR / f"{stem}_ehr.csv"
     filename.parent.mkdir(exist_ok=True, parents=True)
 
-    df.to_csv(filename)
+    df.to_csv(filename, index = False)
 
     return True
