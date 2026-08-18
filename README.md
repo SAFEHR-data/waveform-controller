@@ -1,5 +1,8 @@
 A controller for reading waveform data from a rabbitmq queue and processing it.
 
+Coverage in default branch
+[![codecov](https://codecov.io/gh/SAFEHR-data/waveform-controller/graph/badge.svg?token=73S4D3A28G)](https://codecov.io/gh/SAFEHR-data/waveform-controller)
+
 # Running the Code
 
 ## Pre-reqs
@@ -58,6 +61,8 @@ separate to the Emap project root.
 #### Clone repos
 Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
 both inside your root directory.
+
+Inside the PIXL repo, checkout the commit that we have pinned in [workflow file](.github/workflows/pytest.yml).
 
 If on a system that has access to sensitive data, disable push remotes on all cloned repos as follows:
 ```
