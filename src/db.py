@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class starDB:
-    sql_query: str = ""
+    mrn_lookup_query: str = ""
     connection_string: str = "dbname={} user={} password={} host={} port={} connect_timeout={} options='-c statement_timeout={}'".format(
         settings.UDS_DBNAME,  # type:ignore
         settings.UDS_USERNAME,  # type:ignore
@@ -21,27 +21,32 @@ class starDB:
         settings.UDS_CONNECT_TIMEOUT,  # type:ignore
         settings.UDS_QUERY_TIMEOUT,  # type:ignore
     )
-    connection_pool: pool.ThreadedConnectionPool
+    connection_pool: pool.SimpleConnectionPool
 
-    def connect(self):
+    def connect(self) -> None:
         self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
 
-    def init_query(self):
+    def _init_mrn_lookup_query(self) -> None:
         with open("src/sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
-            self.sql_query = sql.SQL(file.read())
-        self.sql_query = self.sql_query.format(
+            self.mrn_lookup_query = sql.SQL(file.read())  # type:ignore
+
+        self.mrn_lookup_query = self.mrn_lookup_query.format(
             schema_name=sql.Identifier(settings.SCHEMA_NAME)
         )
 
-    def get_row(self, location_string: str, observation_datetime: datetime):
+    def get_matched_mrn(
+        self, location_string: str, observation_datetime: datetime
+    ) -> pd.DataFrame:
         parameters = {
             "location_string": location_string,
             "observation_datetime": observation_datetime,
         }
+        if self.mrn_lookup_query == "":
+            self._init_mrn_lookup_query()
         try:
             with self.connection_pool.getconn() as db_connection:
                 with db_connection.cursor() as curs:
-                    curs.execute(self.sql_query, parameters)
+                    curs.execute(self.mrn_lookup_query, parameters)
                     rows = curs.fetchall()
                 self.connection_pool.putconn(db_connection)
         except psycopg2.errors.OperationalError as e:
@@ -54,6 +59,9 @@ class starDB:
             )
 
         return rows[0]
+
+    def get_hospital_visit_from_csn(self, csn: str) -> str:
+        return "not implemented yet"
 
 
 class caboodleDB:
@@ -69,10 +77,10 @@ class caboodleDB:
         settings.CABOODLE_CONNECT_TIMEOUT,  # type:ignore
         settings.CABOODLE_QUERY_TIMEOUT,  # type:ignore
     )
-    connection_pool: pool.ThreadedConnectionPool
+    connection_pool: pool.SimpleConnectionPool
     fake_caboodle: bool
 
-    def connect(self):
+    def connect(self) -> None:
         """Set up connection to the database."""
         self.fake_caboodle = True if settings.CABOODLE_TESTING == "TRUE" else False
         if not self.fake_caboodle:
@@ -80,8 +88,19 @@ class caboodleDB:
                 1, 1, self.connection_string
             )
 
-    def get_airflow(self, start_datetime: datetime, end_datetime: datetime, csn: str):
+    def get_airflow(
+        self, start_datetime: datetime, end_datetime: datetime, csn: str
+    ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
+
+        with open("src/sql/airway.sql", "r") as file:
+            airway_query = sql.SQL(file.read())
+        parameters = {
+            "start_datetime": start_datetime,
+            "end_datetime": end_datetime,
+            "csn": csn,
+        }
+
         if self.fake_caboodle:
             fake_airway = {
                 "DateTimeRecorded": [0],
@@ -90,13 +109,7 @@ class caboodleDB:
                 "TubeSize": [0],
             }
             return pd.DataFrame(data=fake_airway)
-        with open("src/sql/airway.sql", "r") as file:
-            airway_query = sql.SQL(file.read())
-        parameters = {
-            "start_datetime": start_datetime,
-            "end_datetime": end_datetime,
-            "csn": csn,
-        }
+
         return self._get_rows(airway_query, parameters)
 
     def _get_rows(self, sql_query: sql.SQL, parameters: dict):
