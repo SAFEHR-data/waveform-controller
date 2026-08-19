@@ -246,7 +246,6 @@ class WaveformController:
                 # don't include CSNs until we're sure that would be acceptable
                 "mapped_location_string": mapped_location_string,
                 "source_variable_id": source_variable_id,
-                "source_channel_id": source_channel_id,
                 "message_type": str(type(message)),  # HF vs LF
             }
             if numeric_values is not None:
