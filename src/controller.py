@@ -155,7 +155,16 @@ class WaveformController:
         ):
             if lookup_success:
                 ack_message(ch, method_frame.delivery_tag)
-                telemetry.messages_processed.add(1)
+                telem_attrs = {
+                    # don't include CSNs until we're sure that would be acceptable
+                    "mapped_location_string": mapped_location_string,
+                    "source_variable_id": source_variable_id,
+                    "source_channel_id": source_channel_id,
+                    "message_type": str(type(message)),  # HF vs LF
+                }
+                telemetry.messages_processed.add(1, telem_attrs)
+                num_data_points = len(numeric_values) if numeric_values is not None else len(string_values)
+                telemetry.data_points_processed.add(num_data_points, telem_attrs)
             else:
                 reject_message(ch, method_frame.delivery_tag, False)
 
