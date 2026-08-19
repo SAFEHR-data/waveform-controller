@@ -4,7 +4,7 @@ import json
 import logging
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 import pyarrow as pa
@@ -17,6 +17,25 @@ from locations import (
     PSEUDONYMISED_PARQUET_PATTERN,
 )
 from .hashing import do_hash
+
+
+def _is_missing_csv_cell(x: Any) -> bool:
+    return x is None or x == "" or pd.isna(x)
+
+
+def parse_numeric_values(x: Any) -> Optional[list[Decimal]]:
+    """Parse a JSON array of numbers from CSV into Decimals; empty cell -> None."""
+    if _is_missing_csv_cell(x):
+        return None
+    # Not sure if this is the most efficient way. Might be able to do something with DecimalArray?
+    return list(json.loads(x, parse_float=Decimal, parse_int=Decimal))
+
+
+def parse_string_values(x: Any) -> Optional[list[str]]:
+    """Parse a JSON array of strings from CSV; empty cell -> None."""
+    if _is_missing_csv_cell(x):
+        return None
+    return [str(i) for i in json.loads(x)]
 
 
 def pseudon_cli():
@@ -77,6 +96,8 @@ def csv_to_parquets(
     logger.info("Turning CSV %s to parquets", csv_path)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     original_parquet_path.parent.mkdir(parents=True, exist_ok=True)
+    # sampling_rate is null in low-frequency rows. Value columns are
+    # JSON arrays; exactly one of numeric_values / string_values is populated per row.
     df = pd.read_csv(
         str(csv_path),
         dtype={
@@ -85,20 +106,20 @@ def csv_to_parquets(
             "source_variable_id": str,
             "source_channel_id": str,
             "units": str,
-            "sampling_rate": int,
+            "sampling_rate": "Int32",
             "timestamp": float,
             "location": str,
-            "values": str,
+            "numeric_values": str,
+            "string_values": str,
         },
         header=0,  # the first line is always the header
     )
 
-    def parse_array(x):
-        # Not sure if this is the most efficient way. Might be able to do something with DecimalArray?
-        # return [pa.decimal128(i) for i in x.replace(' ', '').split(',')]
-        return [Decimal(i) for i in x.strip().strip("[]").replace(" ", "").split(",")]
+    df["numeric_values"] = df["numeric_values"].apply(parse_numeric_values)
+    df["string_values"] = df["string_values"].apply(parse_string_values)
 
-    df["values"] = df["values"].apply(parse_array)
+    # CSV row order follows RabbitMQ arrival, which is not guaranteed chronological.
+    df = df.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
 
     # Convert pandas DataFrame to pyarrow Table with proper types
     schema = pa.schema(
@@ -119,7 +140,8 @@ def csv_to_parquets(
             # Not yet tested whether the specified precision
             # and scale cause it to be equivalent in size to decimal32.
             # See issue #31.
-            ("values", pa.list_(pa.decimal128(9, 4))),
+            ("numeric_values", pa.list_(pa.decimal128(9, 4))),
+            ("string_values", pa.list_(pa.string())),
         ]
     )
     table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
@@ -135,7 +157,8 @@ def csv_to_parquets(
         # valid values: {‘NONE’, ‘SNAPPY’, ‘GZIP’, ‘BROTLI’, ‘LZ4’, ‘ZSTD’}
         compression="zstd",
         use_dictionary=True,
-        write_statistics=True,  # enable indexes/statistics
+        write_statistics=True,
+        write_page_index=True,
         flavor="spark",
     )
     logger.info(
@@ -162,7 +185,8 @@ def csv_to_parquets(
         str(hashed_path),
         compression="zstd",
         use_dictionary=True,
-        write_statistics=True,  # enable indexes/statistics
+        write_statistics=True,
+        write_page_index=True,
         flavor="spark",
     )
     logger.info(
@@ -195,7 +219,8 @@ SAFE_COLUMNS = [
     "source_channel_id",
     "timestamp",
     "units",
-    "values",
+    "numeric_values",
+    "string_values",
 ]
 
 

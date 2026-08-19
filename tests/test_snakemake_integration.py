@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 
 import pytest
+
+from src import csv_writer
 from tests.helpers import TestFileDescription
 
 
@@ -30,7 +32,8 @@ EXPECTED_COLUMN_NAMES = [
     "sampling_rate",
     "timestamp",
     "location",
-    "values",
+    "numeric_values",
+    "string_values",
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -49,27 +52,66 @@ def build_required_images():
         result.check_returncode()
 
 
-def _make_test_input_csv(tmp_path, t: TestFileDescription) -> list[list[Decimal]]:
-    original_csv_dir = tmp_path / "original-csv"
-    csv_path = original_csv_dir / t.get_orig_csv()
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-    secs_per_row = 1
-    vals_per_row = t.sampling_rate * secs_per_row
-    test_data = t.generate_data(vals_per_row)
-    with open(csv_path, "w") as f:
-        f.write(",".join(EXPECTED_COLUMN_NAMES) + "\n")
-        start_time = t.start_timestamp
-        row_time = start_time
-        for td in test_data:
-            row_values_str = ", ".join(str(v) for v in td)
-            f.write(
-                f'{t.csn},{t.mrn},{t.variable_id},{t.channel_id},{t.units},{t.sampling_rate},{row_time},{t.location},"[{row_values_str}]"\n'
+def _numeric_rows_as_written(numeric_rows: list) -> list:
+    """Expected parquet numerics after write_frame's json.dumps(float) round-trip."""
+    result = []
+    for row in numeric_rows:
+        if row is None:
+            result.append(None)
+        else:
+            as_floats = [float(v) for v in row]
+            result.append(
+                list(
+                    json.loads(
+                        json.dumps(as_floats), parse_float=Decimal, parse_int=Decimal
+                    )
+                )
             )
-            row_time += secs_per_row
-    # The test input CSV file needs to be old enough so that snakemake doesn't skip it
+    return result
+
+
+def _make_test_input_csv(
+    monkeypatch, tmp_path, t: TestFileDescription
+) -> tuple[list, list]:
+    """Write CSV via csv_writer.write_frame (same path as production).
+
+    Returns (numeric_rows, string_rows) expected in the resulting parquet.
+    """
+    # Host tmp_path is mounted as /waveform-export in the exporter container, so
+    # CSVs must land at tmp_path/original-csv/...
+    original_csv_dir = tmp_path / "original-csv"
+    original_csv_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(csv_writer, "WAVEFORM_ORIGINAL_CSV", original_csv_dir)
+
+    numeric_rows, string_rows = t.generate_data()
+    # Filename uses "noCh"; production write_frame gets None for missing channel.
+    source_channel_id = None if t.channel_id == "noCh" else t.channel_id
+    row_time = t.start_timestamp
+    for numeric_values, string_values in zip(numeric_rows, string_rows):
+        csv_writer.write_frame(
+            numeric_values=(
+                [float(v) for v in numeric_values]
+                if numeric_values is not None
+                else None
+            ),
+            string_values=string_values,
+            source_variable_id=t.variable_id,
+            source_channel_id=source_channel_id,
+            observation_timestamp=row_time,
+            units=t.units,
+            sampling_rate=t.sampling_rate,
+            mapped_location_string=t.location,
+            csn=t.csn,
+            mrn=t.mrn,
+        )
+        row_time += 1  # one second per row
+
+    csv_path = original_csv_dir / t.get_orig_csv()
+    assert csv_path.exists(), f"write_frame did not create expected path {csv_path}"
+    # Old enough that snakemake does not skip it as "too new"
     old_time = time.time() - (10 * 60)
     os.utime(csv_path, (old_time, old_time))
-    return test_data
+    return _numeric_rows_as_written(numeric_rows), string_rows
 
 
 @pytest.fixture(scope="function")
@@ -107,13 +149,14 @@ def background_hasher():
     ).check_returncode()
 
 
-def test_snakemake_pipeline(tmp_path: Path, background_hasher):
+def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     # ARRANGE
 
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
+    # Fractional seconds to ensure there's no integer rounding going on.
     file1 = TestFileDescription(
         "2025-01-01",
-        1735740780.0,
+        1735740780.25,
         "SECRET_CSN_1234",
         "SECRET_MRN_12345",
         "SECRET_LOCATION_123",
@@ -139,7 +182,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
     # same day, different CSN
     file3 = TestFileDescription(
         "2025-01-01",
-        1735740783.0,
+        1735740783.25,
         "SECRET_CSN_1235",
         "SECRET_MRN_12346",
         "SECRET_LOCATION_123",
@@ -152,7 +195,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
     # new day, first CSN again
     file4 = TestFileDescription(
         "2025-01-02",
-        1735801965.0,
+        1735801965,
         "SECRET_CSN_1234",
         "SECRET_MRN_12345",
         "SECRET_LOCATION_123",
@@ -162,10 +205,38 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         "uV",
         5,
     )
+    # low-frequency numeric (timestamps kept inside existing CSN_1234 day-1 range)
+    file5_lf_numeric = TestFileDescription(
+        "2025-01-01",
+        1735740770.25,
+        "SECRET_CSN_1234",
+        "SECRET_MRN_12345",
+        "SECRET_LOCATION_123",
+        "1408",
+        "noCh",
+        None,
+        "unitless",
+        3,
+        value_kind="numeric",
+    )
+    # low-frequency string (timestamps kept inside existing CSN_1235 day-1 range)
+    file6_lf_string = TestFileDescription(
+        "2025-01-01",
+        1735740784.25,
+        "SECRET_CSN_1235",
+        "SECRET_MRN_12346",
+        "SECRET_LOCATION_123",
+        "584",
+        "noCh",
+        None,
+        "unitless",
+        2,
+        value_kind="string",
+    )
     test_data_files = []
-    for f in [file1, file2, file3, file4]:
-        test_data_values = _make_test_input_csv(tmp_path, f)
-        test_data_files.append((f, test_data_values))
+    for f in [file1, file2, file3, file4, file5_lf_numeric, file6_lf_string]:
+        expected_values = _make_test_input_csv(monkeypatch, tmp_path, f)
+        test_data_files.append((f, expected_values))
 
     expected_hash_summaries = {
         "2025-01-01": [
@@ -231,7 +302,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         assert expected_summary == actual_hash_lookup_data
 
     # check no extraneous files
-    expected_file_counts = {"2025-01-01": 3, "2025-01-02": 1}
+    expected_file_counts = {"2025-01-01": 5, "2025-01-02": 1}
     _assert_date_partitioned_files(tmp_path / "original-csv", expected_file_counts)
     _assert_date_partitioned_files(tmp_path / "original-parquet", expected_file_counts)
     _assert_date_partitioned_files(tmp_path / "pseudonymised", expected_file_counts)
@@ -305,13 +376,26 @@ def _run_snakemake(tmp_path):
     result.check_returncode()
 
 
-def _compare_original_parquet_to_expected(original_parquet: Path, expected_test_values):
-    # CSV should always match original parquet
+def _compare_original_parquet_to_expected(
+    original_parquet: Path, expected_data: tuple[list, list]
+):
+    expected_numeric, expected_string = expected_data
     orig_parquet_file = pq.ParquetFile(original_parquet)
     orig_reader = orig_parquet_file.read()
-    orig_all_values = orig_reader["values"].combine_chunks()
-    expected_pa = pa.array(expected_test_values, type=orig_all_values.type)
-    assert orig_all_values == expected_pa
+
+    orig_numeric = orig_reader["numeric_values"].combine_chunks()
+    if all(v is None for v in expected_numeric):
+        assert orig_numeric.null_count == len(orig_numeric)
+    else:
+        expected_pa = pa.array(expected_numeric, type=orig_numeric.type)
+        assert orig_numeric == expected_pa
+
+    orig_string = orig_reader["string_values"].combine_chunks()
+    if all(v is None for v in expected_string):
+        assert orig_string.null_count == len(orig_string)
+    else:
+        expected_pa = pa.array(expected_string, type=orig_string.type)
+        assert orig_string == expected_pa
 
 
 def _compare_parquets(original_parquet_path: Path, pseudon_parquet_path: Path):
