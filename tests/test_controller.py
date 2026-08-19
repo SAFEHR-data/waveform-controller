@@ -1,6 +1,7 @@
 import copy
 import json
 from datetime import datetime
+from typing import Literal
 from unittest.mock import Mock
 
 import pytest
@@ -15,7 +16,7 @@ class FakeData:
     def __init__(self, missing_key, value_type):
         self.missing_key = missing_key
         self.fake_data = FakeData._base_fake_data()
-        self.value_type = value_type
+        self.value_type: Literal["numeric", "string", "both"] = value_type
 
     @staticmethod
     def _base_fake_data() -> dict:
@@ -76,24 +77,25 @@ class FakeLFData(FakeData):
             "value": None,
             "status": "IGNORE",
         }
-        if self.value_type == "numeric":
+        source_val = None
+        if self.value_type in ["numeric", "both"]:
             source_val = "0.8"
             self.fake_data["numericValue"] = {
                 "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
                 "value": 0.8,
                 "status": "SAVE",
             }
-            self.fake_data["stringValue"] = copy.copy(ignore_val)
-        elif self.value_type == "string":
+        if self.value_type in ["string", "both"]:
             source_val = "some categorical"
             self.fake_data["stringValue"] = {
                 "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
                 "value": source_val,
                 "status": "SAVE",
             }
+        if self.value_type == "numeric":
+            self.fake_data["stringValue"] = copy.copy(ignore_val)
+        elif self.value_type == "string":
             self.fake_data["numericValue"] = copy.copy(ignore_val)
-        else:
-            raise ValueError("must be numeric or string")
         self.fake_data["sourceValue"] = {
             "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue",
             "value": source_val,
@@ -133,9 +135,10 @@ class FakeLFData(FakeData):
 
 
 @pytest.mark.parametrize(
-    # only affect LF tests so is redundant for HF
+    # only affect LF tests so is redundant for HF (which is always numeric)
+    # "both" is a form of bad data which we should reject
     "lf_value_type",
-    ["string", "numeric"],
+    ["string", "numeric", "both"],
 )
 @pytest.mark.parametrize(
     "fake_data_class",
@@ -162,6 +165,10 @@ def test_controller_callback(
     db_connect_failure,
     bad_data_type,
 ):
+    # Certain combinations of test just don't make sense
+    if fake_data_class == FakeHFData and lf_value_type != "numeric":
+        pytest.skip()
+
     emap_db_mock = Mock()
     if db_connect_failure:
         emap_db_mock.get_row.side_effect = ConnectionError("mock database error")
@@ -185,6 +192,7 @@ def test_controller_callback(
         case 3:
             # message type field present but unrecognised
             fake_data["@class"] = fake_data["@class"].replace("e", "x")
+
     fake_data_str = json.dumps(fake_data)
     controller = WaveformController()
 
@@ -196,11 +204,12 @@ def test_controller_callback(
 
     controller.waveform_callback(channel_mock, method_frame_mock, None, fake_data_str)
 
-    if not bad_data_type:
+    was_bad_data = bad_data_type or lf_value_type == "both"
+    if not was_bad_data:
         # we at least tried to query the DB
         emap_db_mock.get_row.assert_called_once()
 
-    if bad_data_type:
+    if was_bad_data:
         write_frame_mock.assert_not_called()
         # db should not even have been queried if data was bad
         emap_db_mock.get_row.assert_not_called()

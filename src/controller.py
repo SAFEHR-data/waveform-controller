@@ -107,6 +107,13 @@ class WaveformController:
             )
             return
 
+        if (numeric_values is None) == (string_values is None):
+            reject_message(ch, method_frame.delivery_tag, False)
+            logger.error(
+                f"Waveform message {method_frame.delivery_tag} has either both numeric and string values, or neither."
+            )
+            return
+
         observation_time = datetime.fromtimestamp(
             observation_timestamp, tz=timezone.utc
         )
