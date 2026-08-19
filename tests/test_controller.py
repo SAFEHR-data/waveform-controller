@@ -176,7 +176,7 @@ def test_controller_callback(
         emap_db_mock.get_row.return_value = ("mrn", "nhsno", "csn", opt_out)
     monkeypatch.setattr("controller.db.starDB", Mock(return_value=emap_db_mock))
 
-    write_frame_mock = Mock(return_value=True)
+    write_frame_mock = Mock()
     monkeypatch.setattr("controller.writer.write_frame", write_frame_mock)
 
     # Simulate various kinds of bad data. Make sure to keep the range parameter

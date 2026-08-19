@@ -3,10 +3,15 @@ A script to receive messages in the waveform queue and write them to stdout,
 based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
+from typing import Literal, Any, Optional
 
 import pika
+from pika import spec
+from pika.adapters.blocking_connection import BlockingChannel
+
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
@@ -46,20 +51,106 @@ def reject_message(ch, delivery_tag, requeue):
         logger.warning("Attempting to not acknowledge a message on a closed channel.")
 
 
+ActionType = Literal["ack", "reject"]
+RejectReasonType = Literal[
+    "wrong_type",
+    "missing_key",
+    "numeric_string_confusion",
+    "db_conn_err",
+    "opt_out",
+    "no_ehr_lookup",
+]
+
+
+@dataclass(frozen=True)
+class MessageOutcome:
+    ch: BlockingChannel
+    delivery_tag: Any
+    action: ActionType
+    requeue: bool = False
+    reason: str | None = None
+    # success-only:
+    success_attrs: dict | None = None
+    num_data_points: int = 0
+
+
+def finalise_message(outcome: MessageOutcome):
+    """Send the ack/reject to rabbitmq, and send the appropriate telemetry to Otel.
+
+    We have a counter for ALL messages and their outcomes, and then more detailed
+    counters for successful messages.
+    """
+    handled_attrs: dict[str, Any] = {}
+    if outcome.action == "ack":
+        ack_message(outcome.ch, outcome.delivery_tag)
+        telemetry.messages_processed.add(1, outcome.success_attrs)
+        telemetry.data_points_processed.add(
+            outcome.num_data_points, outcome.success_attrs
+        )
+        handled_attrs["waveform.disposition"] = "success"
+    elif outcome.action == "reject":
+        reject_message(outcome.ch, outcome.delivery_tag, requeue=outcome.requeue)
+        handled_attrs["waveform.disposition"] = (
+            "requeue" if outcome.requeue else "reject"
+        )
+        handled_attrs["waveform.reject.reason"] = outcome.reason
+
+        # opt-out is NOT an error, but does lead to rejection
+        non_error_reasons: list[RejectReasonType] = ["opt_out"]
+        if outcome.reason not in non_error_reasons:
+            # Specifically use this attr name because it's an OTel convention
+            # for error types https://opentelemetry.io/docs/specs/semconv/registry/attributes/error/
+            handled_attrs["error.type"] = outcome.reason
+    telemetry.messages_handled.add(1, handled_attrs)
+
+
 class WaveformController:
     def __init__(self):
         self.emap_db = db.starDB()
         self.emap_db.init_query()
         self.emap_db.connect()
 
-    def waveform_callback(self, ch, method_frame, _header_frame, body):
+    def waveform_callback(
+        self,
+        ch: BlockingChannel,
+        method_frame: spec.Basic.Deliver,
+        _header_frame: spec.BasicProperties,
+        body: bytes,
+    ):
+        outcome = self._process_message(ch, method_frame, _header_frame, body)
+        finalise_message(outcome)
+
+    def _process_message(
+        self,
+        ch: BlockingChannel,
+        method_frame: spec.Basic.Deliver,
+        _header_frame: spec.BasicProperties,
+        body: bytes,
+    ) -> MessageOutcome:
+        def outcome(
+            action: ActionType,
+            *,
+            reason: Optional[RejectReasonType] = None,
+            requeue: bool = False,
+            success_attrs=None,
+            num_data_points=0,
+        ) -> MessageOutcome:
+            return MessageOutcome(
+                ch,
+                method_frame.delivery_tag,
+                action,
+                reason=reason,
+                requeue=requeue,
+                success_attrs=success_attrs,
+                num_data_points=num_data_points,
+            )
+
         logger.debug("Message received of length %s", len(body))
         try:
             message = WaveformBaseMessage.from_json(body)
         except TypeError as e:
             logger.error("Skipping, could not understand message type %s", e)
-            reject_message(ch, method_frame.delivery_tag, False)
-            return
+            return outcome("reject", reason="wrong_type", requeue=False)
 
         try:
             location_string = message.get_mapped_location_string()
@@ -102,18 +193,16 @@ class WaveformController:
                     "Unrecognized message type but should have dealt with this by now?"
                 )
         except KeyError as e:
-            reject_message(ch, method_frame.delivery_tag, False)
             logger.error(
                 f"Waveform message {method_frame.delivery_tag} is missing required data {e}."
             )
-            return
+            return outcome("reject", reason="missing_key", requeue=False)
 
         if (numeric_values is None) == (string_values is None):
-            reject_message(ch, method_frame.delivery_tag, False)
             logger.error(
                 f"Waveform message {method_frame.delivery_tag} has either both numeric and string values, or neither."
             )
-            return
+            return outcome("reject", reason="numeric_string_confusion", requeue=False)
 
         observation_time = datetime.fromtimestamp(
             observation_timestamp, tz=timezone.utc
@@ -132,16 +221,14 @@ class WaveformController:
             matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn", False)
         except ConnectionError:
             logger.error("Database error, will try again", exc_info=True)
-            reject_message(ch, method_frame.delivery_tag, True)
-            return
+            return outcome("reject", reason="db_conn_err", requeue=True)
 
         (mrn, nhs_no, csn, opt_out) = matched_mrn
         if opt_out:
             logger.info("Research opt-out is set for mrn %s, not writing.", mrn)
-            reject_message(ch, method_frame.delivery_tag, False)
-            return
+            return outcome("reject", reason="opt_out", requeue=False)
 
-        if writer.write_frame(
+        writer.write_frame(
             source_variable_id=source_variable_id,
             source_channel_id=source_channel_id,
             sampling_rate=sampling_rate,
@@ -152,21 +239,24 @@ class WaveformController:
             mrn=mrn,
             numeric_values=numeric_values,
             string_values=string_values,
-        ):
-            if lookup_success:
-                ack_message(ch, method_frame.delivery_tag)
-                telem_attrs = {
-                    # don't include CSNs until we're sure that would be acceptable
-                    "mapped_location_string": mapped_location_string,
-                    "source_variable_id": source_variable_id,
-                    "source_channel_id": source_channel_id,
-                    "message_type": str(type(message)),  # HF vs LF
-                }
-                telemetry.messages_processed.add(1, telem_attrs)
-                num_data_points = len(numeric_values) if numeric_values is not None else len(string_values)
-                telemetry.data_points_processed.add(num_data_points, telem_attrs)
+        )
+        if lookup_success:
+            success_attrs = {
+                # don't include CSNs until we're sure that would be acceptable
+                "mapped_location_string": mapped_location_string,
+                "source_variable_id": source_variable_id,
+                "source_channel_id": source_channel_id,
+                "message_type": str(type(message)),  # HF vs LF
+            }
+            if numeric_values is not None:
+                num_data_points = len(numeric_values)
             else:
-                reject_message(ch, method_frame.delivery_tag, False)
+                assert string_values is not None
+                num_data_points = len(string_values)
+            return outcome(
+                "ack", success_attrs=success_attrs, num_data_points=num_data_points
+            )
+        return outcome("reject", reason="no_ehr_lookup", requeue=False)
 
 
 def receiver():

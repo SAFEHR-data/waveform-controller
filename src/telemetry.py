@@ -22,7 +22,11 @@ if settings.OTEL_EXPORTER_OTLP_ENDPOINT:
     metrics.set_meter_provider(
         MeterProvider(
             resource=Resource.create({SERVICE_NAME: settings.OTEL_SERVICE_NAME}),
-            metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter(), export_interval_millis=15000)],
+            metric_readers=[
+                PeriodicExportingMetricReader(
+                    OTLPMetricExporter(), export_interval_millis=15000
+                )
+            ],
         )
     )
 
@@ -32,8 +36,14 @@ messages_processed = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
     description="Waveform queue messages successfully written",
 )
 
+messages_handled = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
+    "waveform.messages.handled",
+    unit="{message}",
+    description="Waveform queue messages handled (ack or reject)",
+)
+
 data_points_processed = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
     "waveform.data_points.processed",
     unit="{data_point}",
-    description="Waveform data points processed",
+    description="Waveform data points processed successfully",
 )

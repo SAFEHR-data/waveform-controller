@@ -43,11 +43,11 @@ def write_frame(
     mapped_location_string: str,
     csn: str,
     mrn: str,
-) -> bool:
+) -> None:
     """Appends a frame of waveform data to a csv file (creates file if it doesn't
-    exist). Exactly ONE of string_values, numeric_values must contain a non-None value.
+    exist).
 
-    :return: True if write was successful.
+    Exactly ONE of string_values, numeric_values must contain a non-None value.
     """
     num_non_nones = sum(1 for x in (string_values, numeric_values) if x is not None)
     if num_non_nones != 1:
@@ -93,5 +93,3 @@ def write_frame(
         ]
 
         wv_writer.writerow(row_array)
-
-    return True
