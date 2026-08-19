@@ -6,7 +6,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install --yes --no-install-recommends cron && \
     apt-get autoremove --yes && apt-get clean --yes && rm -rf /var/lib/apt/lists/*
-COPY --from=ghcr.io/astral-sh/uv@sha256:538e0b39736e7feae937a65983e49d2ab75e1559d35041f9878b7b7e51de91e4 /uv /uvx /bin/
+# uv image label "0.12.5"
+COPY --from=ghcr.io/astral-sh/uv@sha256:e85be844203885286c60ffad8a858d48afb6c5a5c237ca0e67f12e74b8f174b1 /uv /uvx /bin/
 ARG UVCACHE=/root/.cache/uv
 COPY PIXL /PIXL
 WORKDIR /app
