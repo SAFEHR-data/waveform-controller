@@ -2,7 +2,7 @@ import logging
 
 from datetime import datetime, timedelta
 
-from db import caboodleDB
+from db import caboodleDB, starDB
 from csv_writer import write_ehr
 from pseudon.pseudon import pseudonymise_relevant_columns
 
@@ -18,28 +18,24 @@ def ehr_for_csv(date_str: str, original_csn: str, hashed_csn: str) -> None:
     :param hashed_csn: the pseudonymised hash to use for file output.
     """
 
-    db_connection = caboodleDB()
-    db_connection.connect()
+    caboodle_connection = caboodleDB()
+    caboodle_connection.connect()
 
-    _ehr_for_csv(date_str, original_csn, hashed_csn, db_connection)
+    star_connection = starDB()
+    star_connection.connect()
+
+    _ehr_for_csv(
+        date_str, original_csn, hashed_csn, caboodle_connection, star_connection
+    )
 
 
 def _ehr_for_csv(
     date_str: str,
     original_csn: str,
     hashed_csn: str,
-    db_connection: caboodleDB,
+    caboodle_connection: caboodleDB,
+    star_connection: starDB,
 ) -> None:
-    """Extracts electronic healthcare records for a given csn and writes the results to
-    a pseudonymised csv file for a single day.
-
-    This is a privacy-sensitive area of code. Unhashed CSNs must not appear in uploaded
-    files.
-    :param date_str: the date to look up data for
-    :param original_csn: the csn to base look up on.
-    :param hashed_csn: the pseudonymised hash to use for file output.
-    :param db_connection: connection to the caboodle database.
-    """
     # will pick up the logger config defined in the snakemake job (ie. log to file)
     logger = logging.getLogger(__name__)
 
@@ -47,7 +43,13 @@ def _ehr_for_csv(
 
     start_datetime = datetime.strptime(date_str, "%Y-%m-%d")
     end_datetime = start_datetime + timedelta(days=1)
-    airflow = db_connection.get_airflow(start_datetime, end_datetime, original_csn)
+    airflow = caboodle_connection.get_airflow(
+        start_datetime, end_datetime, original_csn
+    )
+
+    hospital_visit = star_connection.get_hospital_visit_from_csn(original_csn)
+
+    logger.info(hospital_visit)
 
     safe_columns = [
         "DateTimeRecorded",

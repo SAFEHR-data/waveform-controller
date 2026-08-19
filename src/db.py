@@ -43,15 +43,8 @@ class starDB:
         }
         if self.mrn_lookup_query == "":
             self._init_mrn_lookup_query()
-        try:
-            with self.connection_pool.getconn() as db_connection:
-                with db_connection.cursor() as curs:
-                    curs.execute(self.mrn_lookup_query, parameters)
-                    rows = curs.fetchall()
-                self.connection_pool.putconn(db_connection)
-        except psycopg2.errors.OperationalError as e:
-            self.connection_pool.putconn(db_connection)
-            raise ConnectionError(f"Data base error: {e}")
+
+        rows = self._get_rows(self.mrn_lookup_query, parameters)  # type: ignore
 
         if len(rows) != 1:
             raise ValueError(
@@ -61,7 +54,27 @@ class starDB:
         return rows[0]
 
     def get_hospital_visit_from_csn(self, csn: str) -> str:
-        return "not implemented yet"
+        with open("src/sql/get_hospital_visit_id.sql", "r") as file:
+            hv_query = sql.SQL(file.read())
+
+        parameters = {
+            "schema": settings.SCHEMA_NAME,
+            "csn": csn,
+        }
+
+        return self._get_rows(hv_query, parameters)
+
+    def _get_rows(self, sql_query: sql.SQL, parameters: dict):
+        try:
+            with self.connection_pool.getconn() as db_connection:
+                with db_connection.cursor() as curs:
+                    curs.execute(sql_query, parameters)
+                    rows = curs.fetchall()
+                self.connection_pool.putconn(db_connection)
+        except psycopg2.errors.OperationalError as e:
+            self.connection_pool.putconn(db_connection)
+            raise ConnectionError(f"Data base error: {e}")
+        return rows
 
 
 class caboodleDB:
