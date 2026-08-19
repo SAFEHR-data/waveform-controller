@@ -40,3 +40,7 @@ get_from_env("HASHER_API_PORT")
 get_from_env("LOG_LEVEL", default_value="INFO")
 
 get_from_env("INSTANCE_NAME", required=True)
+
+# OpenTelemetry: OTLP/HTTP base URL of the LGTM collector, e.g. http://lgtm:4318
+get_from_env("OTEL_EXPORTER_OTLP_ENDPOINT")
+get_from_env("OTEL_SERVICE_NAME", default_value="waveform-misc")

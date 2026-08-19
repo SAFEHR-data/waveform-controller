@@ -10,6 +10,7 @@ import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
+import telemetry as telemetry  # type:ignore
 from emap_interchange.messages import (
     WaveformBaseMessage,
     WaveformHighFreqMessage,
@@ -154,6 +155,7 @@ class WaveformController:
         ):
             if lookup_success:
                 ack_message(ch, method_frame.delivery_tag)
+                telemetry.messages_processed.add(1)
             else:
                 reject_message(ch, method_frame.delivery_tag, False)
 
