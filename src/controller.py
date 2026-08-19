@@ -87,11 +87,12 @@ def finalise_message(outcome: MessageOutcome):
         telemetry.data_points_processed.add(
             outcome.num_data_points, outcome.success_attrs
         )
-        handled_attrs["waveform.disposition"] = "success"
+        # Don't use a word that implies success, because "rejected" is not always an error
+        handled_attrs["waveform.disposition"] = "processed"
     elif outcome.action == "reject":
         reject_message(outcome.ch, outcome.delivery_tag, requeue=outcome.requeue)
         handled_attrs["waveform.disposition"] = (
-            "requeue" if outcome.requeue else "reject"
+            "requeued" if outcome.requeue else "rejected"
         )
         handled_attrs["waveform.reject.reason"] = outcome.reason
 
