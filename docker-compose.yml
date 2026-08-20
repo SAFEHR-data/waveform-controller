@@ -53,22 +53,23 @@ services:
       - ../config/hasher.env
     restart: unless-stopped
   waveform-monitoring:
+    # This service exists as a partly temporary measure, covering a few different cases:
+    #   * Until LGTM on the GAE can tell us disk free amount for /gae
+    #   * Stats on HL7 bz2 files on disk. Arguably done better in Emap but
+    #     I'm putting all the telemetry in one project for now.
+    #   * Disk usage stats for the waveform processing (CSVs, parquets, etc). This will likely stay here.
     build:
-      context: ..
-      dockerfile: waveform-controller/Dockerfile
-      target: waveform_exporter
+      context: .
+      dockerfile: monitoring/Dockerfile
       args:
         HTTP_PROXY: ${HTTP_PROXY}
         http_proxy: ${http_proxy}
         HTTPS_PROXY: ${HTTPS_PROXY}
         https_proxy: ${https_proxy}
-    # ideally we'd use docker secrets but it's not enabled currently
     env_file:
-      - ../config/exporter.env
+      - ../config/monitoring.env
     volumes:
-      - ../waveform-saved-messages:/waveform-saved-messages
-      # because we're launching through cron in the container, which starts
-      # processes with a clean environment, also mount in the config file so
-      # it can be read in by snakemake later
-      - ../config/exporter.env:/config/exporter.env:ro
+      # we are assuming this FS layout to emap saved messages
+      - ../../waveform-saved-messages:/waveform-saved-messages:ro
+      - ../waveform-export:/waveform-export:ro
     restart: unless-stopped
