@@ -27,7 +27,7 @@ class starDB:
         self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
 
     def _init_mrn_lookup_query(self) -> None:
-        with open("src/sql/mrn_based_on_bed_and_datetime.sql", "r") as file:
+        with open(settings.SQL_PATH + "mrn_based_on_bed_and_datetime.sql", "r") as file:
             self.mrn_lookup_query = sql.SQL(file.read())  # type:ignore
 
         self.mrn_lookup_query = self.mrn_lookup_query.format(
@@ -54,7 +54,7 @@ class starDB:
         return rows[0]
 
     def get_hospital_visit_from_csn(self, csn: str) -> str:
-        with open("src/sql/get_hospital_visit_id.sql", "r") as file:
+        with open(settings.SQL_PATH + "get_hospital_visit_id.sql", "r") as file:
             hv_query = sql.SQL(file.read())
 
         parameters = {
@@ -106,7 +106,7 @@ class caboodleDB:
     ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
 
-        with open("src/sql/airway.sql", "r") as file:
+        with open(settings.SQL_PATH + "airway.sql", "r") as file:
             airway_query = sql.SQL(file.read())
         parameters = {
             "start_datetime": start_datetime,
