@@ -275,6 +275,7 @@ def _run_snakemake(tmp_path):
         "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
         "PROCESS_CSV_FROM_DATE=\n"
         "CABOODLE_TESTING=TRUE\n"
+        "SQL_PATH=/app/src/sql/\n"
     )
     # run system under test (exporter container) in foreground
     compose_args = [
