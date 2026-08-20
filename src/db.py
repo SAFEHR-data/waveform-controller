@@ -57,8 +57,9 @@ class starDB:
         with open(settings.SQL_PATH + "get_hospital_visit_id.sql", "r") as file:
             hv_query = sql.SQL(file.read())
 
+        hv_query = hv_query.format(schema_name=sql.Identifier(settings.SCHEMA_NAME))  # type: ignore
+
         parameters = {
-            "schema": settings.SCHEMA_NAME,
             "csn": csn,
         }
 
