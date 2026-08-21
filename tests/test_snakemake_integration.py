@@ -331,7 +331,8 @@ def _assert_date_partitioned_files(
 
 
 def _collect_docker_coverage(coverage_dir: Path) -> None:
-    """Copy in-container coverage data next to pytest-cov's files for session combine."""
+    """Copy in-container coverage data next to pytest-cov's files for session
+    combine."""
     # Replace any previous docker shards so a later `coverage combine` cannot
     # mix stale runs.
     for stale in REPO_ROOT.glob(".coverage.docker.*"):

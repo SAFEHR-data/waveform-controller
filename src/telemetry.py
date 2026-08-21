@@ -47,3 +47,9 @@ data_points_processed = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
     unit="{data_point}",
     description="Waveform data points processed successfully",
 )
+
+ftps_uploaded = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
+    "waveform.ftps.uploaded",
+    unit="{file}",
+    description="Waveform ftps parquet file uploaded",
+)
