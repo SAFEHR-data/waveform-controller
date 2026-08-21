@@ -40,3 +40,5 @@ addopts = "--basetemp=.pytest_tmp"
 
 [tool.mypy]
 ignore_missing_imports = true
+# opentelemetry docs recommend this
+namespace_packages = true
