@@ -27,6 +27,11 @@ dev = [
     "types-pika-ts",
     "types-psycopg2",
 ]
+# Installed into the exporter image only when built with INSTALL_COVERAGE=1 (tests).
+# Measurement stays off unless COVERAGE_PROCESS_START is set (tests set it; prod does not).
+coverage = [
+    "coverage>=7.0",
+]
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"
@@ -37,6 +42,27 @@ emap-send-ftps = "exporter.ftps:do_upload_cli"
 # Force temp dirs under the repo so Docker can mount them on macOS.
 # The default under /private/var/folders seems to silently fail (gives you an empty directory)
 addopts = "--basetemp=.pytest_tmp"
+
+[tool.coverage.run]
+branch = true
+# Parallel data files so host pytest-cov and in-Docker processes can be combined.
+# Also used inside Docker via COVERAGE_PROCESS_START=/app/pyproject.toml.
+parallel = true
+# Relative "src" resolves to ./src on the host and /app/src in the image (WORKDIR /app).
+source = ["src"]
+# Snakemake DSL, not Python 
+omit = ["**/Snakefile"]
+
+# Map in-container / installed paths onto the local src/ tree for reports.
+[tool.coverage.paths]
+source = [
+    "src",
+    "/app/src",
+    "*/site-packages",
+]
+
+[tool.coverage.report]
+omit = ["**/Snakefile"]
 
 [tool.mypy]
 ignore_missing_imports = true

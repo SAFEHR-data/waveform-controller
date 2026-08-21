@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 from decimal import Decimal
 
 import pyarrow as pa
@@ -44,7 +45,11 @@ COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
 def build_required_images():
     for image in ["waveform-exporter", "waveform-hasher"]:
         print(f"BUILDING {image}:")
-        result = _run_compose(COMPOSE_FILE, ["build", image], cwd=REPO_ROOT)
+        build_args = ["build", image]
+        # Exporter needs the coverage optional extra so in-container measurement works.
+        if image == "waveform-exporter":
+            build_args = ["build", "--build-arg", "INSTALL_COVERAGE=1", image]
+        result = _run_compose(COMPOSE_FILE, build_args, cwd=REPO_ROOT)
         print(
             f"{image} build output:\nstdout:\n{result.stdout}\n"
             f"stderr:\n{result.stderr}END {image} build output [rc={result.returncode}]"
@@ -325,6 +330,30 @@ def _assert_date_partitioned_files(
         assert expected_count == len(date_dir_items)
 
 
+def _collect_docker_coverage(coverage_dir: Path) -> None:
+    """Copy in-container coverage data next to pytest-cov's files for session combine."""
+    # Replace any previous docker shards so a later `coverage combine` cannot
+    # mix stale runs.
+    for stale in REPO_ROOT.glob(".coverage.docker.*"):
+        stale.unlink(missing_ok=True)
+
+    files = [
+        f
+        for f in coverage_dir.iterdir()
+        if f.is_file() and f.name.startswith(".coverage")
+    ]
+    if not files:
+        print(
+            "WARNING: no coverage data from Docker. Rebuild waveform-exporter "
+            "with INSTALL_COVERAGE=1 (tests do this via build_required_images)."
+        )
+        return
+    for i, src in enumerate(files):
+        dest = REPO_ROOT / f".coverage.docker.{os.getpid()}.{i}"
+        shutil.copy(src, dest)
+        print(f"Collected Docker coverage data: {src.name} -> {dest.name}")
+
+
 def _run_snakemake(tmp_path):
     # Config is a right pain. The exporter has a blank environment because it's launched by cron, so
     # nothing passed in as an env var will be seen.
@@ -344,6 +373,14 @@ def _run_snakemake(tmp_path):
         "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
         "PROCESS_CSV_FROM_DATE=\n"
     )
+
+    # Collect coverage from Python processes inside the exporter container
+    # (snakemake + rule bodies). Config is the same pyproject.toml as the host;
+    # COVERAGE_FILE redirects the data onto the pytest bind mount.
+    # https://coverage.readthedocs.io/en/latest/subprocess.html
+    coverage_dir = tmp_path / "coverage-data"
+    coverage_dir.mkdir(exist_ok=True)
+
     # run system under test (exporter container) in foreground
     compose_args = [
         "run",
@@ -354,6 +391,11 @@ def _run_snakemake(tmp_path):
         # feed in our special config file
         "-v",
         f"{tmp_exporter_env_path}:/config/exporter.env:ro",
+        # Auto-start coverage in every Python process in the container
+        "-e",
+        "COVERAGE_PROCESS_START=/app/pyproject.toml",
+        "-e",
+        "COVERAGE_FILE=/waveform-export/coverage-data/.coverage",
         "--entrypoint",
         "/app/exporter-scripts/scheduled-script.sh",
         "waveform-exporter",
@@ -374,6 +416,7 @@ def _run_snakemake(tmp_path):
     # print all output then raise if there was an error
     print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
     result.check_returncode()
+    _collect_docker_coverage(coverage_dir)
 
 
 def _compare_original_parquet_to_expected(

@@ -2470,6 +2470,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+coverage = [
+    { name = "coverage" },
+]
 dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2481,6 +2484,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "core", directory = "../PIXL/pixl_core" },
+    { name = "coverage", marker = "extra == 'coverage'", specifier = ">=7.0" },
     { name = "opentelemetry-distro", specifier = "==0.63b1" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.42.0" },
     { name = "pandas", specifier = "==2.2.3" },
@@ -2495,7 +2499,7 @@ requires-dist = [
     { name = "types-pika-ts", marker = "extra == 'dev'" },
     { name = "types-psycopg2", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "coverage"]
 
 [[package]]
 name = "win32-setctime"
