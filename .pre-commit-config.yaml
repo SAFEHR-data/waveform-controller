@@ -36,7 +36,7 @@ repos:
             "types-pika",
             "types-requests",
           ]
-        files: src/
+        files: ^(src|monitoring)/
   # a collection of sanity checks: check for merge conflicts, check the end of
   # lines, check for DOS vs unix stuff, and a newline at the end of files.
   - repo: https://github.com/pre-commit/pre-commit-hooks
