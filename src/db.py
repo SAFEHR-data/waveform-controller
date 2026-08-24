@@ -22,8 +22,16 @@ class starDB:
         settings.UDS_QUERY_TIMEOUT,  # type:ignore
     )
     connection_pool: pool.SimpleConnectionPool
+    fake_star: bool = False
 
     def connect(self) -> None:
+        self.fake_star = True if settings.STARDB_TESTING == "TRUE" else False
+        if not self.fake_star:
+            self.connection_pool = pool.SimpleConnectionPool(
+                1, 1, self.connection_string
+            )
+
+
         self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
 
     def _init_mrn_lookup_query(self) -> None:
@@ -62,6 +70,8 @@ class starDB:
         parameters = {
             "csn": csn,
         }
+        if self.fake_star:
+            return '12345678'
 
         return self._get_rows(hv_query, parameters)
 
@@ -92,7 +102,7 @@ class caboodleDB:
         settings.CABOODLE_QUERY_TIMEOUT,  # type:ignore
     )
     connection_pool: pool.SimpleConnectionPool
-    fake_caboodle: bool
+    fake_caboodle: bool = False
 
     def connect(self) -> None:
         """Set up connection to the database."""
