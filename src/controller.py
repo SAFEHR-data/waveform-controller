@@ -3,13 +3,18 @@ A script to receive messages in the waveform queue and write them to stdout,
 based on https://www.rabbitmq.com/tutorials/tutorial-one-python
 """
 
-import json
 from datetime import datetime, timezone
 import logging
+
 import pika
 import db as db  # type:ignore
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
+from emap_interchange.messages import (
+    WaveformBaseMessage,
+    WaveformHighFreqMessage,
+    WaveformLowFreqMessage,
+)
 
 logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -47,26 +52,64 @@ class WaveformController:
 
     def waveform_callback(self, ch, method_frame, _header_frame, body):
         logger.debug("Message received of length %s", len(body))
-        data = json.loads(body)
         try:
-            location_string = data["mappedLocationString"]
-            observation_timestamp = data["observationTime"]
-            source_variable_id = data["sourceVariableId"]
-            source_channel_id = data["sourceChannelId"]
-            sampling_rate = data["samplingRate"]
-            units = data["unit"]
-            waveform_data = data["numericValues"]
-            mapped_location_string = data["mappedLocationString"]
-            logger.debug(
-                "Message is for loc %s, var %s, ch %s",
-                location_string,
-                source_variable_id,
-                source_channel_id,
-            )
+            message = WaveformBaseMessage.from_json(body)
+        except TypeError as e:
+            logger.error("Skipping, could not understand message type %s", e)
+            reject_message(ch, method_frame.delivery_tag, False)
+            return
+
+        try:
+            location_string = message.get_mapped_location_string()
+            observation_timestamp = message.get_observation_time()
+            source_variable_id = message.get_source_variable_id()
+            units = message.get_unit()
+            mapped_location_string = message.get_mapped_location_string()
+            source_channel_id = None
+            sampling_rate = None
+            numeric_values = None
+            string_values = None
+            if isinstance(message, WaveformHighFreqMessage):
+                sampling_rate = message.get_sampling_rate()
+                source_channel_id = message.get_source_channel_id()
+                numeric_values = message.get_numeric_values()
+                logger.debug(
+                    "WaveformHighFreqMessage is for loc %s, var %s, ch %s",
+                    location_string,
+                    source_variable_id,
+                    source_channel_id,
+                )
+            elif isinstance(message, WaveformLowFreqMessage):
+                # Wrap single values in arrays so they can go in the same
+                # CSV (and parquet...) columns as for HF
+                string_value = message.get_string_value()
+                if string_value is not None:
+                    string_values = [string_value]
+
+                numeric_value = message.get_numeric_value()
+                if numeric_value is not None:
+                    numeric_values = [numeric_value]
+
+                logger.debug(
+                    "WaveformLowFreqMessage is for loc %s, var %s",
+                    location_string,
+                    source_variable_id,
+                )
+            else:
+                raise RuntimeError(
+                    "Unrecognized message type but should have dealt with this by now?"
+                )
         except KeyError as e:
             reject_message(ch, method_frame.delivery_tag, False)
             logger.error(
                 f"Waveform message {method_frame.delivery_tag} is missing required data {e}."
+            )
+            return
+
+        if (numeric_values is None) == (string_values is None):
+            reject_message(ch, method_frame.delivery_tag, False)
+            logger.error(
+                f"Waveform message {method_frame.delivery_tag} has either both numeric and string values, or neither."
             )
             return
 
@@ -99,15 +142,16 @@ class WaveformController:
             reject_message(ch, method_frame.delivery_tag, False)
             return
         if writer.write_frame(
-            waveform_data,
-            source_variable_id,
-            source_channel_id,
-            observation_timestamp,
-            units,
-            sampling_rate,
-            mapped_location_string,
-            csn,
-            mrn,
+            source_variable_id=source_variable_id,
+            source_channel_id=source_channel_id,
+            sampling_rate=sampling_rate,
+            observation_timestamp=observation_timestamp,
+            units=units,
+            mapped_location_string=mapped_location_string,
+            csn=csn,
+            mrn=mrn,
+            numeric_values=numeric_values,
+            string_values=string_values,
         ):
             if lookup_success:
                 ack_message(ch, method_frame.delivery_tag)
