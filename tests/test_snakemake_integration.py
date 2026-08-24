@@ -274,6 +274,7 @@ def _run_snakemake(tmp_path):
         "CSV_AGE_THRESHOLD_MINUTES=5\n"
         "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
         "PROCESS_CSV_FROM_DATE=\n"
+        "STARDB_TESTING=TRUE\n"
         "CABOODLE_TESTING=TRUE\n"
         "SQL_PATH=/app/src/sql/\n"
     )
