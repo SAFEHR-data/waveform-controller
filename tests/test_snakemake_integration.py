@@ -9,15 +9,17 @@ import subprocess
 import time
 from pathlib import Path
 
+import psycopg2
 import pytest
 from tests.helpers import TestFileDescription
 
 
 def _run_compose(
-    compose_file: Path, args: list[str], cwd: Path
+    compose_files: list[Path], args: list[str], cwd: Path
 ) -> subprocess.CompletedProcess:
     # set project name so as not to interfere with images/containers the user might already have
-    cmd = ["docker", "compose", "-p", "pytest", "-f", str(compose_file), *args]
+    file_args = [arg for f in compose_files for arg in ("-f", str(f))]
+    cmd = ["docker", "compose", "-p", "pytest", *file_args, *args]
     return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True)
 
 
@@ -34,14 +36,23 @@ EXPECTED_COLUMN_NAMES = [
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
+COMPOSE_FILES = [
+    REPO_ROOT / "docker-compose.yml",
+    REPO_ROOT / "docker-compose.test.yml",
+]
+
+# fake UDS/"star" schema database, used in place of a real one for these tests
+STAR_STUB_SCHEMA = "star_test"
+STAR_STUB_DBNAME = "fakeuds"
+STAR_STUB_USERNAME = "inform_user"
+STAR_STUB_PASSWORD = "inform"
 
 
 @pytest.fixture(scope="session", autouse=True)
 def build_required_images():
     for image in ["waveform-exporter", "waveform-hasher"]:
         print(f"BUILDING {image}:")
-        result = _run_compose(COMPOSE_FILE, ["build", image], cwd=REPO_ROOT)
+        result = _run_compose(COMPOSE_FILES, ["build", image], cwd=REPO_ROOT)
         print(
             f"{image} build output:\nstdout:\n{result.stdout}\n"
             f"stderr:\n{result.stderr}END {image} build output [rc={result.returncode}]"
@@ -76,7 +87,7 @@ def _make_test_input_csv(tmp_path, t: TestFileDescription) -> list[list[Decimal]
 def background_hasher():
     # run hasher in background
     _run_compose(
-        COMPOSE_FILE,
+        COMPOSE_FILES,
         [
             "up",
             "-d",
@@ -88,7 +99,7 @@ def background_hasher():
     yield
     # print hasher logs whether failed or not
     result = _run_compose(
-        COMPOSE_FILE,
+        COMPOSE_FILES,
         [
             "logs",
             "--no-color",
@@ -98,7 +109,7 @@ def background_hasher():
     )
     print(f"waveform-hasher logs:\n{result.stdout}\n{result.stderr}")
     _run_compose(
-        COMPOSE_FILE,
+        COMPOSE_FILES,
         [
             "down",
             "waveform-hasher",
@@ -107,7 +118,92 @@ def background_hasher():
     ).check_returncode()
 
 
-def test_snakemake_pipeline(tmp_path: Path, background_hasher):
+def _star_stub_db_host_port() -> str:
+    result = _run_compose(
+        COMPOSE_FILES,
+        ["port", "star-stub-db", "5432"],
+        cwd=REPO_ROOT,
+    )
+    result.check_returncode()
+    # output is like "127.0.0.1:54321"
+    return result.stdout.strip().rsplit(":", 1)[-1]
+
+
+def _connect_to_star_stub_db(host_port: str):
+    return psycopg2.connect(
+        dbname=STAR_STUB_DBNAME,
+        user=STAR_STUB_USERNAME,
+        password=STAR_STUB_PASSWORD,
+        host="localhost",
+        port=host_port,
+    )
+
+
+@pytest.fixture(scope="function")
+def star_stub_db():
+    """Brings up a real (but empty, throwaway) postgres container that stands in for
+    the UDS/"star" schema database, so that db.starDB can connect for real over the
+    docker network instead of needing to be mocked out (which doesn't work here, since
+    the code under test runs inside a separate exporter container, not the pytest
+    process).
+    """
+    _run_compose(
+        COMPOSE_FILES,
+        ["up", "-d", "star-stub-db"],
+        cwd=REPO_ROOT,
+    ).check_returncode()
+
+    host_port = _star_stub_db_host_port()
+    # wait for postgres to accept connections
+    deadline = time.time() + 30
+    last_error = None
+    connection = None
+    while time.time() < deadline:
+        try:
+            connection = _connect_to_star_stub_db(host_port)
+            break
+        except psycopg2.OperationalError as e:
+            last_error = e
+            time.sleep(0.5)
+    if connection is None:
+        raise RuntimeError(f"star-stub-db never became ready: {last_error}")
+
+    with connection:
+        with connection.cursor() as cur:
+            cur.execute(f"CREATE SCHEMA IF NOT EXISTS {STAR_STUB_SCHEMA}")
+            cur.execute(
+                f"CREATE TABLE IF NOT EXISTS {STAR_STUB_SCHEMA}.hospital_visit ("
+                "hospital_visit_id SERIAL PRIMARY KEY, "
+                "encounter TEXT NOT NULL)"
+            )
+
+    def insert_hospital_visit(csn: str) -> None:
+        with connection:
+            with connection.cursor() as cur:
+                cur.execute(
+                    f"INSERT INTO {STAR_STUB_SCHEMA}.hospital_visit (encounter) VALUES (%s)",
+                    (csn,),
+                )
+
+    yield insert_hospital_visit
+
+    connection.close()
+    result = _run_compose(
+        COMPOSE_FILES,
+        ["logs", "--no-color", "star-stub-db"],
+        cwd=REPO_ROOT,
+    )
+    print(f"star-stub-db logs:\n{result.stdout}\n{result.stderr}")
+    _run_compose(
+        COMPOSE_FILES,
+        ["down", "star-stub-db"],
+        cwd=REPO_ROOT,
+    ).check_returncode()
+
+
+def test_snakemake_pipeline(
+    tmp_path: Path, background_hasher, star_stub_db
+):
     # ARRANGE
 
     # all fields that need to be de-IDed should contain the string "SECRET" so we can search for it later
@@ -198,6 +294,10 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher):
         ],
     }
 
+    # seed the fake UDS/"star" db with hospital visits for the CSNs used above
+    star_stub_db(file1.csn)
+    star_stub_db(file3.csn)
+
     # ACT
     _run_snakemake(tmp_path)
 
@@ -276,6 +376,17 @@ def _run_snakemake(tmp_path):
         "PROCESS_CSV_FROM_DATE=\n"
         "CABOODLE_TESTING=TRUE\n"
         "SQL_PATH=/app/src/sql/\n"
+        # point the exporter at the fake UDS/"star" db stub, reachable over the
+        # compose network by service name (not the ephemeral host-mapped port,
+        # which is only for the pytest process itself to seed data)
+        f"UDS_DBNAME={STAR_STUB_DBNAME}\n"
+        f"UDS_USERNAME={STAR_STUB_USERNAME}\n"
+        f"UDS_PASSWORD={STAR_STUB_PASSWORD}\n"
+        "UDS_HOST=star-stub-db\n"
+        "UDS_PORT=5432\n"
+        "UDS_CONNECT_TIMEOUT=10\n"
+        "UDS_QUERY_TIMEOUT=3000\n"
+        f"SCHEMA_NAME={STAR_STUB_SCHEMA}\n"
     )
     # run system under test (exporter container) in foreground
     compose_args = [
@@ -292,7 +403,7 @@ def _run_snakemake(tmp_path):
         "waveform-exporter",
     ]
     result = _run_compose(
-        COMPOSE_FILE,
+        COMPOSE_FILES,
         compose_args,
         cwd=REPO_ROOT,
     )
