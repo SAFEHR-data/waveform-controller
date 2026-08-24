@@ -31,9 +31,6 @@ class starDB:
                 1, 1, self.connection_string
             )
 
-
-        self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
-
     def _init_mrn_lookup_query(self) -> None:
         with open(settings.SQL_PATH + "mrn_based_on_bed_and_datetime.sql", "r") as file:
             self.mrn_lookup_query = sql.SQL(file.read())  # type:ignore
@@ -71,7 +68,7 @@ class starDB:
             "csn": csn,
         }
         if self.fake_star:
-            return '12345678'
+            return "12345678"
 
         return self._get_rows(hv_query, parameters)
 
