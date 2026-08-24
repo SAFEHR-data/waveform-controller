@@ -90,7 +90,7 @@ def determine_eventual_outputs(
     :param process_only_yesterday: if false we process all dates, true only from yesterday
     :param process_datestring: a regular expression to match datestrings. Has no effect if
     process_only_yesterday is true
-    :returns: A list of InputCsvFile and a dictionary containing the hash and csn values.
+    :returns: A list of InputCsvFile and a dictionary containing the hashed csn -> csn mappings.
     """
     # Discover all CSVs using the basic file name pattern
     before = time.perf_counter()

@@ -138,6 +138,10 @@ rule daily_hash_lookup:
 
 
 rule send_ftps:
+    resources:
+        # We want to be connected to the FTPS server only once at any one time,
+        # so consume our one and only instance of this resource
+        ftps_server=1
     input:
         WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
     output:
