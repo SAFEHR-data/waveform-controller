@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from exporter.daily_summary import make_daily_hash_summary
-from exporter.ftps import do_upload
+from exporter.ftps import do_upload_multiple
 from locations import (
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_SNAKEMAKE_LOGS,
@@ -154,7 +154,7 @@ rule send_ftps:
         start_timestamp = datetime.now(timezone.utc).isoformat()
         logger = configure_file_logging(log[0])
         logger.info("Calling do_upload to upload file %s", input[0])
-        do_upload(Path(input[0]))
+        do_upload_multiple([Path(input[0])])
         report_ftp_upload()
         end_perf = time.perf_counter()
         end_timestamp = datetime.now(timezone.utc).isoformat()

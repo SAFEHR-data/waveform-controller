@@ -45,11 +45,11 @@ def test_do_upload_input_paths(
         # file needs to exist
         path_to_try.parent.mkdir(parents=True, exist_ok=True)
         path_to_try.write_text("blah")
-        ftps.do_upload(path_to_try)
+        ftps.do_upload_multiple([path_to_try])
         assert connect_mock.called
         ftp_mock.storbinary.assert_called_once()
     else:
         # Don't create upload file as it may be outside the pytest tmp_path. We expect things to fail before that point anyway
         with pytest.raises(ValueError, match="must be under"):
-            ftps.do_upload(path_to_try)
+            ftps.do_upload_multiple([path_to_try])
         connect_mock.assert_not_called()
