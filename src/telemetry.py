@@ -49,7 +49,13 @@ data_points_processed = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
 )
 
 ftps_uploaded = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
-    "waveform.ftps.uploaded",
+    "waveform.ftps.uploaded.count",
     unit="{file}",
     description="Waveform ftps parquet file uploaded",
+)
+
+ftps_time_taken = metrics.get_meter(INSTRUMENTATION_SCOPE).create_histogram(
+    "waveform.ftps.uploaded.time_taken",
+    unit="s",
+    description="Time taken to upload a days' messages",
 )

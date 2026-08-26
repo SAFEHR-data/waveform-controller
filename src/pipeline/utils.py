@@ -9,12 +9,12 @@ from snakemake.io import glob_wildcards
 from pseudon.hashing import do_hash
 from locations import (
     WAVEFORM_PSEUDONYMISED_PARQUET,
-    WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
     ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN_HASHED,
     CSV_PATTERN,
     make_file_name,
+    ALL_UPLOADED_JSON,
 )
 
 
@@ -67,9 +67,8 @@ class InputCsvFile:
         final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self._subs_dict)
         return WAVEFORM_PSEUDONYMISED_PARQUET / f"{final_stem}.parquet"
 
-    def get_ftps_uploaded_file(self) -> Path:
-        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self._subs_dict)
-        return WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
+    def get_ftps_uploaded_all_file(self) -> Path:
+        return Path(make_file_name(str(ALL_UPLOADED_JSON), self._subs_dict))
 
     def get_daily_hash_lookup(self) -> Path:
         return Path(make_file_name(str(HASH_LOOKUP_JSON), self._subs_dict))
@@ -80,6 +79,12 @@ def get_file_age(file_path: Path) -> timedelta:
     file_time_utc = datetime.fromtimestamp(file_path.stat().st_mtime, timezone.utc)
     now_utc = datetime.now(timezone.utc)
     return now_utc - file_time_utc
+
+
+def timestamp_for_paths() -> str:
+    """A now timestamp that is safe for being in file paths on all OSes we are using."""
+    now = datetime.now(timezone.utc)
+    return now.strftime("%Y-%m-%dT%H%M%SZ")
 
 
 def determine_eventual_outputs(
@@ -134,5 +139,6 @@ def determine_eventual_outputs(
     return _all_outputs, _hash_to_csn
 
 
-def report_ftp_upload():
+def report_ftp_upload(perf_time):
     telemetry.ftps_uploaded.add(1)
+    telemetry.ftps_time_taken.record(perf_time)
