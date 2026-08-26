@@ -58,7 +58,7 @@ class starDB:
 
         return rows[0]
 
-    def get_hospital_visit_from_csn(self, csn: str) -> str:
+    def get_hospital_visit_from_csn(self, csn: str) -> int:
         with open(settings.SQL_PATH + "get_hospital_visit_id.sql", "r") as file:
             hv_query = sql.SQL(file.read())
 
@@ -68,13 +68,15 @@ class starDB:
             "csn": csn,
         }
         if self.fake_star:
-            return "12345678"
+            return 12345678
 
         hospital_visit_id = self._get_rows(hv_query, parameters)
 
         # fetchall returns a list of tuples. We want the first element of the first tuple
-        if not isinstance(hospital_visit_id[0][0], str):
-            raise TypeError(f"hospital_visit_id is not string {hospital_visit_id}")
+        if not isinstance(hospital_visit_id[0][0], int):
+            logger.warning(
+                f"hospital_visit_id[0][0] is not integer {hospital_visit_id}"
+            )
 
         return hospital_visit_id[0][0]
 
