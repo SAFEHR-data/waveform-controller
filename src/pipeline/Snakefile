@@ -21,7 +21,7 @@ from locations import (
 from pseudon.pseudon import csv_to_parquets
 from electronic_health_records.ehr import ehr_for_csv
 
-from utils import config_bool, determine_eventual_outputs
+from utils import config_bool, determine_eventual_outputs, report_ftp_upload
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -194,6 +194,7 @@ rule send_ftps:
         logger = configure_file_logging(log[0])
         logger.info("Calling do_upload to upload file %s", input[0])
         do_upload(Path(input[0]))
+        report_ftp_upload()
         end_perf = time.perf_counter()
         end_timestamp = datetime.now(timezone.utc).isoformat()
         # now that we have success, create the sentinel file

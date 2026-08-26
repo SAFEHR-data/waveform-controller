@@ -53,6 +53,7 @@ jobs:
           cp config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env
           cp config.EXAMPLE/hasher.env.EXAMPLE ../config/hasher.env
           cp config.EXAMPLE/controller.env.EXAMPLE ../config/controller.env
+          cp config.EXAMPLE/monitoring.env.EXAMPLE ../config/monitoring.env
           {
             echo ""
             echo "AZURE_CLIENT_ID=${AZURE_CLIENT_ID}"

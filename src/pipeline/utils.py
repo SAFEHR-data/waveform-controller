@@ -1,4 +1,5 @@
 import time
+import telemetry
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
@@ -137,3 +138,7 @@ def determine_eventual_outputs(
         f"Calculated output files using newness threshold {csv_wait_time} in {after - before} seconds"
     )
     return _all_outputs, _hash_to_csn
+
+
+def report_ftp_upload():
+    telemetry.ftps_uploaded.add(1)
