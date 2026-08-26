@@ -141,6 +141,30 @@ class caboodleDB:
 
         return self._get_rows(airway_query, parameters)
 
+    def get_flowsheets(
+        self, start_datetime: datetime, end_datetime: datetime, hospital_visit_id: int
+    ) -> pd.DataFrame:
+        """Retrieve airflow data from database."""
+
+        with open(settings.SQL_PATH + "flow_sheet_values.sql", "r") as file:
+            flowsheet_query = sql.SQL(file.read())
+        parameters = {
+            "start_datetime": start_datetime,
+            "end_datetime": end_datetime,
+            "hospital_visit_id": hospital_visit_id,
+        }
+
+        if self.fake_caboodle:
+            fake_flowsheet = {
+                "DateTimeRecorded": [0],
+                "Temperature": [0],
+                "Noradrenaline": [0],
+                "Metaraminol": [0],
+            }
+            return pd.DataFrame(data=fake_flowsheet)
+
+        return self._get_rows(flowsheet_query, parameters)
+
     def _get_rows(self, sql_query: sql.SQL, parameters: dict):
         try:
             with self.connection_pool.getconn() as db_connection:
