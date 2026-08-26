@@ -1,16 +1,13 @@
-import json
 import shutil
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from exporter.daily_summary import make_daily_hash_summary
-from exporter.ftps import do_upload_multiple, write_ftps_sentinel
+from exporter.ftps import write_ftps_sentinel, do_upload_multiple_with_telemetry
 from locations import (
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_SNAKEMAKE_LOGS,
     WAVEFORM_PSEUDONYMISED_PARQUET,
-    WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
     HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
@@ -19,10 +16,8 @@ from locations import (
     ALL_UPLOADED_JSON,
     ALL_FTPS_LOG,
 )
-from pipeline.utils import timestamp_for_paths
+from pipeline.utils import config_bool, determine_eventual_outputs, timestamp_for_paths
 from pseudon.pseudon import csv_to_parquets
-
-from utils import config_bool, determine_eventual_outputs, report_ftp_upload
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -155,15 +150,13 @@ rule send_all_ftps:
     log:
         ftps_log_file = ALL_FTPS_LOG
     run:
-        start_perf = time.perf_counter()
-        start_timestamp = datetime.now(timezone.utc).isoformat()
         logger = configure_file_logging(log.ftps_log_file)
-        now_timestamp = timestamp_for_paths()
-        remote_tar_filename = f"upload.{now_timestamp}.tar"
-        logger.info("Calling do_upload_multiple to create temp tar file %s", remote_tar_filename)
-        do_upload_multiple([Path(i) for i in input], remote_tar_filename)
-        perf_time = time.perf_counter() - start_perf
-        report_ftp_upload(perf_time)
+        start_timestamp = datetime.now(timezone.utc).isoformat()
+        file_safe_timestamp = timestamp_for_paths()
+        remote_tar_filename = f"upload.{file_safe_timestamp}.tar"
+
+        perf_time = do_upload_multiple_with_telemetry([Path(i) for i in input], remote_tar_filename, wildcards.date)
+
         end_timestamp = datetime.now(timezone.utc).isoformat()
         # Success, create the sentinel file, which also contains a manifest for the
         # uploaded file.
@@ -172,7 +165,7 @@ rule send_all_ftps:
         # to tell snakemake that this upload is complete. The latter will get overwritten
         # on each new upload, but the dated ones will be kept.
         overall_sentinel = Path(output.overall_uploaded_sentinel)
-        new_suffix = f".{now_timestamp}{overall_sentinel.suffix}"
+        new_suffix = f".{file_safe_timestamp}{overall_sentinel.suffix}"
         dated_sentinel_file = overall_sentinel.with_suffix(new_suffix)
         write_ftps_sentinel(
             {

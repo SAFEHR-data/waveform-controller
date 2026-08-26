@@ -3,14 +3,17 @@ import json
 import logging
 import tarfile
 from pathlib import Path
-
 from tempfile import NamedTemporaryFile
+from time import perf_counter
 from typing import Any
 
-import settings
 from core.uploader._ftps import _connect_to_ftp, _create_and_set_as_cwd_multi_path
 
+import settings
+import telemetry
 from locations import WAVEFORM_PSEUDONYMISED_PARQUET
+
+logger = logging.getLogger(__name__)
 
 
 def do_upload_cli():
@@ -24,12 +27,36 @@ def do_upload_cli():
     do_upload_multiple(args.file_to_upload)
 
 
+def do_upload_multiple_with_telemetry(
+    file_list: list[Path], remote_tar_filename: str, wc_date: str
+):
+    start_perf = perf_counter()
+    logger.info(
+        "Calling do_upload_multiple to create temp tar file %s", remote_tar_filename
+    )
+    attrs = {
+        "obs_date": wc_date,
+    }
+    try:
+        do_upload_multiple(file_list, remote_tar_filename)
+    except Exception as e:
+        attrs["error.type"] = str(type(e))
+        logger.exception(
+            "FTPS upload failed for remote filename %s", remote_tar_filename, exc_info=e
+        )
+        raise
+    finally:
+        perf_time = perf_counter() - start_perf
+        telemetry.ftps_uploaded.add(1, attributes=attrs)
+        telemetry.ftps_time_taken.record(perf_time)
+    return perf_time
+
+
 def do_upload_multiple(
     abs_files_to_upload: list[Path], remote_tar_filename: str
 ) -> None:
     """We need to ensure that a user cannot accidentally ask for a file to be uploaded
     unless it's under the correct directory that we know contains pseudonymised data."""
-    logger = logging.getLogger(__name__)
     # Keep things simple, paths must be absolute
     rel_norm_files_to_upload = []
     for abs_file in abs_files_to_upload:
