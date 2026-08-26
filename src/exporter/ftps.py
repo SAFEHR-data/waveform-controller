@@ -122,6 +122,8 @@ def do_upload_multiple(
             tar_file_size,
         )
         resp_code = ftp.storbinary(command, temp_tar_file_path)
+        # Log but don't check the response code; rely on raising one
+        # of the ftplib exceptions to detect errors
         logger.info("FTP response code: %s", resp_code)
         # I wanted to upload with a ".part" suffix, then rename to remove the
         # suffix, to make it very clear to the DSH end that the file transfer completed.

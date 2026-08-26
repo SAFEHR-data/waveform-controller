@@ -160,10 +160,11 @@ rule send_all_ftps:
         end_timestamp = datetime.now(timezone.utc).isoformat()
         # Success, create the sentinel file, which also contains a manifest for the
         # uploaded file.
-        # Because we may re-upload for the same day, create a dated sentinel file
-        # for just this upload, and then copy it to the "latest" sentinel file
+        # Because we may re-upload for the same day on another occasion.
+        # create a dated sentinel file for just this upload, and then
+        # copy it to the "latest" sentinel file
         # to tell snakemake that this upload is complete. The latter will get overwritten
-        # on each new upload, but the dated ones will be kept.
+        # on each re-upload, but the dated ones will be kept.
         overall_sentinel = Path(output.overall_uploaded_sentinel)
         new_suffix = f".{file_safe_timestamp}{overall_sentinel.suffix}"
         dated_sentinel_file = overall_sentinel.with_suffix(new_suffix)
