@@ -70,7 +70,13 @@ class starDB:
         if self.fake_star:
             return "12345678"
 
-        return self._get_rows(hv_query, parameters)
+        hospital_visit_id = self._get_rows(hv_query, parameters)
+
+        # fetchall returns a list of tuples. We want the first element of the first tuple
+        if not isinstance(hospital_visit_id[0][0], str):
+            raise TypeError(f"hospital_visit_id is not string {hospital_visit_id}")
+
+        return hospital_visit_id[0][0]
 
     def _get_rows(self, sql_query: sql.SQL, parameters: dict):
         try:
