@@ -1,6 +1,7 @@
 import logging
 
 from datetime import datetime, timedelta
+import pandas as pd
 
 from db import caboodleDB, starDB
 from csv_writer import write_ehr
@@ -47,22 +48,31 @@ def _ehr_for_csv(
         start_datetime, end_datetime, original_csn
     )
 
-    hospital_visit = star_connection.get_hospital_visit_from_csn(original_csn)
+    hospital_visit_id = star_connection.get_hospital_visit_from_csn(original_csn)
 
-    logger.info(hospital_visit)
+    logger.info(hospital_visit_id)
+
+    flowsheet_values = caboodle_connection.get_flowsheets(
+        start_datetime, end_datetime, hospital_visit_id
+    )
+
+    ehr_data = pd.concat([airflow, flowsheet_values])
 
     safe_columns = [
         "DateTimeRecorded",
         "PlacementInstant",
         "RemovalInstant",
         "TubeSize",
+        "Temperature",
+        "Noradrenaline",
+        "Metaraminol",
     ]
 
-    airflow = pseudonymise_relevant_columns(airflow, safe_columns)
+    ehr_data = pseudonymise_relevant_columns(ehr_data, safe_columns)
 
-    write_ehr(airflow, date_str, hashed_csn)
+    write_ehr(ehr_data, date_str, hashed_csn)
 
-    logger.info(airflow)
+    logger.info(ehr_data)
 
     # delete csn once we no longer need it
     del original_csn
