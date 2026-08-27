@@ -21,6 +21,10 @@ PSEUDONYMISED_PARQUET_PATTERN = WAVEFORM_PSEUDONYMISED_PARQUET / (
 )
 HASH_LOOKUP_JSON_REL = Path("{date}/{date}.hashes.json")
 HASH_LOOKUP_JSON = WAVEFORM_HASH_LOOKUPS / HASH_LOOKUP_JSON_REL
+ALL_UPLOADED_JSON_REL = Path("{date}/{date}.uploaded.json")
+ALL_UPLOADED_JSON = WAVEFORM_FTPS_LOGS / ALL_UPLOADED_JSON_REL
+ALL_FTPS_LOG_REL = Path("{date}/{date}.ftps.log")
+ALL_FTPS_LOG = WAVEFORM_FTPS_LOGS / ALL_FTPS_LOG_REL
 
 
 def make_file_name(template: str, subs: dict[str, str]):

@@ -1,24 +1,23 @@
-import json
-import time
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from exporter.daily_summary import make_daily_hash_summary
-from exporter.ftps import do_upload
+from exporter.ftps import write_ftps_sentinel, do_upload_multiple_with_telemetry
 from locations import (
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_SNAKEMAKE_LOGS,
     WAVEFORM_PSEUDONYMISED_PARQUET,
-    WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
     HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
     FILE_STEM_PATTERN_HASHED,
     make_file_name,
+    ALL_UPLOADED_JSON,
+    ALL_FTPS_LOG,
 )
+from pipeline.utils import config_bool, determine_eventual_outputs, timestamp_for_paths
 from pseudon.pseudon import csv_to_parquets
-
-from utils import config_bool, determine_eventual_outputs, report_ftp_upload
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -45,7 +44,7 @@ PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
 # be fed into snakemake.
 
 all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY, PROCESS_CSV_FROM_DATE)
-ALL_FTPS_UPLOADED = [ao.get_ftps_uploaded_file() for ao in all_outputs]
+ALL_FTPS_UPLOADED = sorted({ao.get_ftps_uploaded_all_file() for ao in all_outputs})
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 
 def configure_file_logging(log_file):
@@ -137,32 +136,46 @@ rule daily_hash_lookup:
         make_daily_hash_summary(daily_files, output.hash_lookup_json)
 
 
-rule send_ftps:
+rule send_all_ftps:
+    resources:
+        # We want to be connected to the FTPS server only once at any one time,
+        # so consume our one and only instance of this resource
+        ftps_server=1
     input:
-        WAVEFORM_PSEUDONYMISED_PARQUET / (FILE_STEM_PATTERN_HASHED + ".parquet")
+        pseudonymised_parquets = pseudonymised_parquet_files_for_date
     output:
-        # sentinel file
-        WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.uploaded.json")
+        # Files are uploaded as a temporary tar file, so there is only one sentinel,
+        # which contains some data about the files uploaded
+        overall_uploaded_sentinel = ALL_UPLOADED_JSON
     log:
-        WAVEFORM_FTPS_LOGS / (FILE_STEM_PATTERN_HASHED + ".ftps.log")
+        ftps_log_file = ALL_FTPS_LOG
     run:
-        start_perf = time.perf_counter()
+        logger = configure_file_logging(log.ftps_log_file)
         start_timestamp = datetime.now(timezone.utc).isoformat()
-        logger = configure_file_logging(log[0])
-        logger.info("Calling do_upload to upload file %s", input[0])
-        do_upload(Path(input[0]))
-        report_ftp_upload()
-        end_perf = time.perf_counter()
+        file_safe_timestamp = timestamp_for_paths()
+        remote_tar_filename = f"upload.{file_safe_timestamp}.tar"
+
+        perf_time = do_upload_multiple_with_telemetry([Path(i) for i in input], remote_tar_filename, wildcards.date)
+
         end_timestamp = datetime.now(timezone.utc).isoformat()
-        # now that we have success, create the sentinel file
-        with open(output[0], "w") as fh:
-            json.dump(
-                {
-                    "uploaded_file": str(input[0]),
-                    "upload_time_secs": end_perf - start_perf,
-                    "start_timestamp": start_timestamp,
-                    "end_timestamp": end_timestamp,
-                },
-                fh,
-                indent=0,
-            )
+        # Success, create the sentinel file, which also contains a manifest for the
+        # uploaded file.
+        # Because we may re-upload for the same day on another occasion.
+        # create a dated sentinel file for just this upload, and then
+        # copy it to the "latest" sentinel file
+        # to tell snakemake that this upload is complete. The latter will get overwritten
+        # on each re-upload, but the dated ones will be kept.
+        overall_sentinel = Path(output.overall_uploaded_sentinel)
+        new_suffix = f".{file_safe_timestamp}{overall_sentinel.suffix}"
+        dated_sentinel_file = overall_sentinel.with_suffix(new_suffix)
+        write_ftps_sentinel(
+            {
+                "upload_time_secs": perf_time,
+                "start_timestamp": start_timestamp,
+                "end_timestamp": end_timestamp,
+                "local_tar_file": remote_tar_filename,
+            },
+            dated_sentinel_file,
+            list(input.pseudonymised_parquets)
+        )
+        shutil.copy(dated_sentinel_file, output.overall_uploaded_sentinel)

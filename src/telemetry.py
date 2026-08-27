@@ -48,8 +48,20 @@ data_points_processed = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
     description="Waveform data points processed successfully",
 )
 
-ftps_uploaded = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
-    "waveform.ftps.uploaded",
+ftps_uploaded_parquets = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
+    "waveform.ftps.uploaded.files.count",
     unit="{file}",
-    description="Waveform ftps parquet file uploaded",
+    description="Number of individual files (in archives) uploaded",
+)
+
+ftps_uploaded_tars = metrics.get_meter(INSTRUMENTATION_SCOPE).create_counter(
+    "waveform.ftps.uploaded.archives.count",
+    unit="{file}",
+    description="Number of archives (containing parquet) uploaded",
+)
+
+ftps_time_taken = metrics.get_meter(INSTRUMENTATION_SCOPE).create_histogram(
+    "waveform.ftps.uploaded.time_taken",
+    unit="s",
+    description="Time taken to upload a days' messages",
 )
