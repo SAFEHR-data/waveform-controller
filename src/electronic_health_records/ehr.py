@@ -44,20 +44,27 @@ def _ehr_for_csv(
 
     start_datetime = datetime.strptime(date_str, "%Y-%m-%d")
     end_datetime = start_datetime + timedelta(days=1)
+
+    # we need hospital visit id for flowsheet and lab_result queries
+    hospital_visit_id = star_connection.get_hospital_visit_from_csn(original_csn)
+
+    # fetch data from caboodle
     airflow = caboodle_connection.get_airflow(
         start_datetime, end_datetime, original_csn
     )
-
-    hospital_visit_id = star_connection.get_hospital_visit_from_csn(original_csn)
-
-    logger.info(hospital_visit_id)
 
     flowsheet_values = caboodle_connection.get_flowsheets(
         start_datetime, end_datetime, hospital_visit_id
     )
 
-    ehr_data = pd.concat([airflow, flowsheet_values])
+    lab_results = caboodle_connection.get_lab_results(
+        start_datetime, end_datetime, hospital_visit_id
+    )
 
+    ehr_data = pd.concat([airflow, flowsheet_values, lab_results])
+
+    # we can pseudonymise to safe, although at the moment all columns
+    # are considered safe
     safe_columns = [
         "DateTimeRecorded",
         "PlacementInstant",
@@ -66,13 +73,19 @@ def _ehr_for_csv(
         "Temperature",
         "Noradrenaline",
         "Metaraminol",
+        "Units",
+        "Abnormal_result",
+        "C-reactive protein",
+        "CSF WCC TUBE 1",
+        "CSF WCC TUBE 2",
+        "CSF WCC TUBE 3",
+        "C-reactive protein",
+        "Comments",  # Free text comments could contain sensitive information. Should we hash it?
     ]
 
     ehr_data = pseudonymise_relevant_columns(ehr_data, safe_columns)
 
     write_ehr(ehr_data, date_str, hashed_csn)
-
-    logger.info(ehr_data)
 
     # delete csn once we no longer need it
     del original_csn
