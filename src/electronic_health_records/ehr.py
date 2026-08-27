@@ -75,11 +75,11 @@ def _ehr_for_csv(
         "Metaraminol",
         "Units",
         "Abnormal_result",
-        "C-reactive protein",
+        "C-reactive protein 1",
         "CSF WCC TUBE 1",
         "CSF WCC TUBE 2",
         "CSF WCC TUBE 3",
-        "C-reactive protein",
+        "C-reactive protein 2",
         "Comments",  # Free text comments could contain sensitive information. Should we hash it?
     ]
 
