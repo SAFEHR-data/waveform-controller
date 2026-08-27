@@ -22,9 +22,9 @@ SELECT
     vo.unit AS Units,
     vo.comment AS Comments
     
-FROM star.visit_observation AS vo
+FROM {schema_name}.visit_observation AS vo
 
-LEFT JOIN star.visit_observation_type AS vt
+LEFT JOIN {schema_name}.visit_observation_type AS vt
     ON vo.visit_observation_type_id = vt.visit_observation_type_id
 
 WHERE vt.id_in_application IN ('6', '3040102622', '12946')
