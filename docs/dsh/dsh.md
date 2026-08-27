@@ -7,7 +7,8 @@ There are safeguards to avoid accidentally uploading from any other directory.
 
 ### Write-only uploader accounts
 
-See slab article for how to configure the uploader accounts.
+See slab article on
+[how to configure the uploader accounts](https://uclh.slab.com/posts/ftps-dsh-uploads-9otokl8x).
 
 ### Notifications
 
