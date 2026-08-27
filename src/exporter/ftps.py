@@ -1,4 +1,3 @@
-import argparse
 import json
 import logging
 import tarfile
@@ -14,17 +13,6 @@ import telemetry
 from locations import WAVEFORM_PSEUDONYMISED_PARQUET
 
 logger = logging.getLogger(__name__)
-
-
-def do_upload_cli():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "file_to_upload",
-        type=Path,
-        help="file to upload relative to pseudonymised folder",
-    )
-    args = parser.parse_args()
-    do_upload_multiple(args.file_to_upload)
 
 
 def do_upload_multiple_with_telemetry(

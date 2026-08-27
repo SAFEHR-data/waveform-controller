@@ -1,4 +1,3 @@
-import argparse
 import functools
 import json
 import logging
@@ -36,13 +35,6 @@ def parse_string_values(x: Any) -> Optional[list[str]]:
     if _is_missing_csv_cell(x):
         return None
     return [str(i) for i in json.loads(x)]
-
-
-def pseudon_cli():
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--csv", type=Path)
-    args = arg_parser.parse_args()
-    csv_to_parquets(args.csv)
 
 
 def csv_to_parquets(
