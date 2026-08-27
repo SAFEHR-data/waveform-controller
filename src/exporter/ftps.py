@@ -24,6 +24,9 @@ def do_upload_multiple_with_telemetry(
     )
     attrs = {
         "obs_date": wc_date,
+        # It's possible you'd run staging+prod instances
+        # that feed into the same collector, so differentiate here.
+        "deployment.environment.name": settings.INSTANCE_NAME,
     }
     try:
         do_upload_multiple(file_list, remote_tar_filename)
@@ -35,7 +38,8 @@ def do_upload_multiple_with_telemetry(
         raise
     finally:
         perf_time = perf_counter() - start_perf
-        telemetry.ftps_uploaded.add(1, attributes=attrs)
+        telemetry.ftps_uploaded_tars.add(1, attributes=attrs)
+        telemetry.ftps_uploaded_parquets.add(len(file_list), attributes=attrs)
         telemetry.ftps_time_taken.record(perf_time)
     return perf_time
 
