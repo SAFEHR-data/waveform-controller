@@ -283,9 +283,11 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
             tmp_path / "original-parquet" / filename.get_orig_parquet()
         )
         pseudon_path = tmp_path / "pseudonymised" / filename.get_pseudon_parquet()
+        ehr_path = tmp_path / "pseudonymised_ehr" / filename.get_pseudon_ehr()
 
         assert original_parquet_path.exists()
         assert pseudon_path.exists()
+        assert ehr_path.exists()
 
         _compare_original_parquet_to_expected(original_parquet_path, expected_data)
         _compare_parquets(original_parquet_path, pseudon_path)
@@ -367,12 +369,15 @@ def _run_snakemake(tmp_path):
     tmp_exporter_env_path = tmp_path / "config/exporter.env"
     tmp_exporter_env_path.parent.mkdir(exist_ok=True)
     tmp_exporter_env_path.write_text(
-        "SNAKEMAKE_RULE_UNTIL=all_daily_hash_lookups\n"
+        "SNAKEMAKE_RULE_UNTIL=all_ehr_and_hash_lookups\n"
         "SNAKEMAKE_CORES=1\n"
         "INSTANCE_NAME=pytest\n"
         "CSV_AGE_THRESHOLD_MINUTES=5\n"
         "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
         "PROCESS_CSV_FROM_DATE=\n"
+        "STARDB_TESTING=TRUE\n"
+        "CABOODLE_TESTING=TRUE\n"
+        "SQL_PATH=/app/src/sql/\n"
     )
 
     # Collect coverage from Python processes inside the exporter container
