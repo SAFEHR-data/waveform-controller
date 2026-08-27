@@ -18,8 +18,8 @@ SELECT
     r.abnormal_flag AS Abnormal_result,
     r.comment AS Comments
 
-FROM star.lab_result AS r
-LEFT JOIN star.lab_order AS o
+FROM {schema_name}.lab_result AS r
+LEFT JOIN {schema_name}.lab_order AS o
     ON r.lab_order_id = o.lab_order_id
 
 WHERE r.result_status  like 'FINAL'

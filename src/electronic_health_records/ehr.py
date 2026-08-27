@@ -53,11 +53,11 @@ def _ehr_for_csv(
         start_datetime, end_datetime, original_csn
     )
 
-    flowsheet_values = caboodle_connection.get_flowsheets(
+    flowsheet_values = star_connection.get_flowsheets(
         start_datetime, end_datetime, hospital_visit_id
     )
 
-    lab_results = caboodle_connection.get_lab_results(
+    lab_results = star_connection.get_lab_results(
         start_datetime, end_datetime, hospital_visit_id
     )
 
