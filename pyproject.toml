@@ -10,6 +10,8 @@ dependencies = [
     "pika>=1.3.2",
     "pre-commit>=4.5.0",
     "snakemake==9.14.5",
+    "opentelemetry-distro==0.63b1",
+    "opentelemetry-exporter-otlp-proto-http==1.42.0",
     # need to be compatible with PIXL, which currently pins 2.9.10 (arguably it shouldn't)
     "psycopg2-binary>=2.9.10",
     "requests==2.32.4",
@@ -20,9 +22,15 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
     "stablehash==0.3.0",
     "types-pika-ts",
     "types-psycopg2",
+]
+# Installed into the exporter image only when built with INSTALL_COVERAGE=1 (tests).
+# Measurement stays off unless COVERAGE_PROCESS_START is set (tests set it; prod does not).
+coverage = [
+    "coverage>=7.0",
 ]
 
 [project.scripts]
@@ -35,5 +43,28 @@ emap-send-ftps = "exporter.ftps:do_upload_cli"
 # The default under /private/var/folders seems to silently fail (gives you an empty directory)
 addopts = "--basetemp=.pytest_tmp"
 
+[tool.coverage.run]
+branch = true
+# Parallel data files so host pytest-cov and in-Docker processes can be combined.
+# Also used inside Docker via COVERAGE_PROCESS_START=/app/pyproject.toml.
+parallel = true
+# Relative "src" resolves to ./src on the host and /app/src in the image (WORKDIR /app).
+source = ["src"]
+# Snakemake DSL, not Python 
+omit = ["**/Snakefile"]
+
+# Map in-container / installed paths onto the local src/ tree for reports.
+[tool.coverage.paths]
+source = [
+    "src",
+    "/app/src",
+    "*/site-packages",
+]
+
+[tool.coverage.report]
+omit = ["**/Snakefile"]
+
 [tool.mypy]
 ignore_missing_imports = true
+# opentelemetry docs recommend this
+namespace_packages = true

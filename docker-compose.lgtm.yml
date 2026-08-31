@@ -1,0 +1,37 @@
+# Local Grafana LGTM stack (Loki, Grafana, Tempo, Mimir/Prometheus, plus
+# an OpenTelemetry Collector).
+# In production, this would be an external service.
+#
+# Docs: https://grafana.com/docs/opentelemetry/docker-lgtm/
+#
+# Start with the waveform stack (same Compose project/network, hostname `lgtm`):
+#   docker compose -f docker-compose.yml -f docker-compose.lgtm.yml up -d
+#
+# Or start only LGTM:
+#   docker compose -p lgtm -f docker-compose.lgtm.yml up -d
+#
+# Grafana UI: http://127.0.0.1:3000
+
+services:
+  lgtm:
+    image: grafana/otel-lgtm:0.30.2
+    restart: unless-stopped
+    profiles:
+      - lgtm
+    ports:
+      # Grafana UI
+      - "127.0.0.1:3000:3000"
+      # OTLP gRPC (OpenTelemetry default)
+      - "127.0.0.1:4317:4317"
+      # OTLP HTTP (OpenTelemetry default)
+      - "127.0.0.1:4318:4318"
+      # Optional: query backends directly (Grafana already has them as datasources)
+      - "127.0.0.1:3200:3200" # Tempo
+      - "127.0.0.1:4040:4040" # Pyroscope
+      - "127.0.0.1:9090:9090" # Prometheus / Mimir
+    volumes:
+      # https://github.com/grafana/docker-otel-lgtm#persist-data-across-container-instantiation
+      - lgtm-data:/data
+
+volumes:
+  lgtm-data:

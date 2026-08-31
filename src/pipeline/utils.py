@@ -1,4 +1,5 @@
 import time
+import telemetry
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
@@ -8,10 +9,12 @@ from snakemake.io import glob_wildcards
 from pseudon.hashing import do_hash
 from locations import (
     WAVEFORM_PSEUDONYMISED_PARQUET,
+    WAVEFORM_PSEUDONYMISED_EHR,
     WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
     ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN_HASHED,
+    EHR_STEM_PATTERN_HASHED,
     CSV_PATTERN,
     make_file_name,
 )
@@ -73,6 +76,10 @@ class InputCsvFile:
     def get_daily_hash_lookup(self) -> Path:
         return Path(make_file_name(str(HASH_LOOKUP_JSON), self._subs_dict))
 
+    def get_ehr_lookup(self) -> Path:
+        final_stem = make_file_name(EHR_STEM_PATTERN_HASHED, self._subs_dict)
+        return WAVEFORM_PSEUDONYMISED_EHR / f"{final_stem}_ehr.csv"
+
 
 def get_file_age(file_path: Path) -> timedelta:
     # need to use UTC to avoid DST issues
@@ -131,3 +138,7 @@ def determine_eventual_outputs(
         f"Calculated output files using newness threshold {csv_wait_time} in {after - before} seconds"
     )
     return _all_outputs, _hash_to_csn
+
+
+def report_ftp_upload():
+    telemetry.ftps_uploaded.add(1)

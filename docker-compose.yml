@@ -25,6 +25,9 @@ services:
         http_proxy: ${http_proxy}
         HTTPS_PROXY: ${HTTPS_PROXY}
         https_proxy: ${https_proxy}
+        # Set to 1 in integration tests so COVERAGE_PROCESS_START can collect data.
+        # Default 0 keeps production/dev images free of the coverage package.
+        INSTALL_COVERAGE: ${INSTALL_COVERAGE:-0}
     # ideally we'd use docker secrets but it's not enabled currently
     env_file:
       - ../config/exporter.env
@@ -51,4 +54,25 @@ services:
       - "127.0.0.1::8000"
     env_file:
       - ../config/hasher.env
+    restart: unless-stopped
+  waveform-monitoring:
+    # This service exists as a partly temporary measure, covering a few different cases:
+    #   * Until LGTM on the GAE can tell us disk free amount for /gae
+    #   * Stats on HL7 bz2 files on disk. Arguably done better in Emap but
+    #     I'm putting all the telemetry in one project for now.
+    #   * Disk usage stats for the waveform processing (CSVs, parquets, etc). This will likely stay here.
+    build:
+      context: .
+      dockerfile: monitoring/Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY}
+        http_proxy: ${http_proxy}
+        HTTPS_PROXY: ${HTTPS_PROXY}
+        https_proxy: ${https_proxy}
+    env_file:
+      - ../config/monitoring.env
+    volumes:
+      # we are assuming this FS layout to emap saved messages
+      - ../../waveform-saved-messages:/waveform-saved-messages:ro
+      - ../waveform-export:/waveform-export:ro
     restart: unless-stopped
