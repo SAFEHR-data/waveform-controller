@@ -31,4 +31,4 @@ WHERE vt.id_in_application IN ('6', '3040102622', '12946')
 AND vo.valid_from BETWEEN %(start_datetime)s AND %(end_datetime)s
 AND vo.hospital_visit_id = %(hospital_visit_id)s
 
-GROUP BY DateTimeRecorded, Units, vo.comment
+GROUP BY DateTimeRecorded, Units, Comments
