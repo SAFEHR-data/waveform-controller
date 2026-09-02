@@ -81,6 +81,8 @@ mkdir config
 cp waveform-controller/config.EXAMPLE/controller.env.EXAMPLE config/controller.env
 cp waveform-controller/config.EXAMPLE/exporter.env.EXAMPLE config/exporter.env
 cp waveform-controller/config.EXAMPLE/hasher.env.EXAMPLE config/hasher.env
+cp waveform-controller/config.EXAMPLE/monitoring.env.EXAMPLE config/monitoring.env
+cp waveform-controller/config.EXAMPLE/lgtm.env.EXAMPLE config/lgtm.env
 ```
 From the new config files, remove the comments telling you not to put secrets in it, as instructed.
 
@@ -118,13 +120,22 @@ messages.
 mkdir waveform-export
 ```
 
+##### Create docker network
+If not already done, create the docker network used for bridging the Emap
+portal with the local LGTM (grafana) instance:
+
+`docker network create emap-portal-grafana`
+
 ##### run it!
 
 Build and start the hasher, controller and exporter with docker.
+(the `--profile lgtm` brings up the local telemetry collector,
+which is optional and soon to be replaced
+with a GAE-level lgtm instance)
 ```
 cd waveform-controller
-docker compose build
-docker compose up -d
+docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm build
+docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm up -d
 ```
 
 For more complex deployment scenarios, such as where there is existing data you need to preserve,

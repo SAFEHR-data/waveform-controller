@@ -110,7 +110,31 @@ When the core service comes back up, it would continue to update the non-wavefor
 
 ### Waveform controller/exporter (ie. this repo)
 
-You may need to delete files in the host directory `waveform-export`, which
+#### Bring down all waveform containers and rebuild
+```
+docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm down
+# check out desired code (example)
+git checkout my_branch
+git pull
+# rebuild
+docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm build
+```
+
+#### Reconfigure
+
+Check all example config files in `config.EXAMPLE`. This shows what config files are expected to be present
+in this version of the code.
+
+Copy any that don't exist in `../config` as per the instructions in each file.
+
+Then make sure that any new/deleted variables are adjusted as appropriate.
+
+You could run this command for each file:
+`vimdiff config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env`
+
+#### Reset data
+
+To force re-processing, you would need to delete files in the host directory `waveform-export`, which
 is bind mounted by the `waveform-controller` and `waveform-exporter` containers.
 
 Snakemake won't regenerate files if the timestamps of upstream
@@ -135,7 +159,8 @@ Bring up any Emap services that we brought down:
 Emap repo: `emap docker up -d`
 
 Bring up the waveform controller/export if you brought them down.
-Waveform repo: `docker compose up -d`
+Waveform repo: `docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm up -d`
+
 
 ### Replay old HL7 data
 
