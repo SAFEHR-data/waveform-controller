@@ -1,8 +1,14 @@
+# you may need to add to this list if containers need to have internet access
+# AND talk to other containers.
+x-no-proxy: &no-proxy localhost
+
 x-proxy-common: &proxy-common
   HTTP_PROXY: ${HTTP_PROXY:-}
   http_proxy: ${http_proxy:-}
   HTTPS_PROXY: ${HTTPS_PROXY:-}
   https_proxy: ${https_proxy:-}
+  NO_PROXY: *no-proxy
+  no_proxy: *no-proxy
 
 services:
   waveform-controller:
@@ -51,6 +57,8 @@ services:
       - "127.0.0.1::8000"
     env_file:
       - ../config/hasher.env
+    environment:
+      <<: *proxy-common
     restart: unless-stopped
   waveform-monitoring:
     # This service exists as a partly temporary measure, covering a few different cases:
