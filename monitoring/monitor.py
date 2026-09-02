@@ -6,6 +6,7 @@ Run in this command in dev to update the lockfile: `uv lock --script monitoring/
 
 import logging
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -173,6 +174,18 @@ def _bytes_in_regular_files(tld: Path):
     return byte_count
 
 
+def report_disk_free_space(meter: Meter):
+    disk_free = meter.create_gauge(
+        "waveform.monitoring.gae_disk_free",
+        unit="By",
+        description="Disk free on the /gae partition",
+    )
+    # We assume here that we are mounted onto the partition we
+    # care about measuring (on the GAE this would be /gae)
+    gae_free_bytes = shutil.disk_usage(SAVED_MESSAGES_DIR)
+    disk_free.set(gae_free_bytes.free)
+
+
 def main() -> int:
     service_name = _env("OTEL_SERVICE_NAME")
     otlp_endpoint = _env("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -184,6 +197,7 @@ def main() -> int:
     # things to measure
     scan_hl7_bz2(meter)
     scan_waveform_exporter_files(meter)
+    report_disk_free_space(meter)
 
     # shutdown, flush data
     provider = metrics.get_meter_provider()
