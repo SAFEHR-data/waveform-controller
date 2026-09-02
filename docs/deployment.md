@@ -135,7 +135,8 @@ Bring up any Emap services that we brought down:
 Emap repo: `emap docker up -d`
 
 Bring up the waveform controller/export if you brought them down.
-Waveform repo: `docker compose up -d`
+Waveform repo: `docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm up -d`
+
 
 ### Replay old HL7 data
 

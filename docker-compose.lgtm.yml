@@ -18,6 +18,18 @@ services:
     restart: unless-stopped
     profiles:
       - lgtm
+    environment:
+      # set this to match the emap portal page
+      GF_SERVER_ROOT_URL: "%(protocol)s://localhost:7100/local-grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+      # Grafana is only accessible on localhost or through password-protected
+      # Emap portal, so some non-admin access is fine.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Editor"
+    networks:
+      - default
+      - emap-portal-grafana
     ports:
       # Grafana UI
       - "127.0.0.1:3000:3000"
@@ -35,3 +47,8 @@ services:
 
 volumes:
   lgtm-data:
+
+networks:
+  # allow the emap-portal to connect to us
+  emap-portal-grafana:
+    external: true
