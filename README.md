@@ -124,7 +124,7 @@ mkdir waveform-export
 If not already done, create the docker network used for bridging the Emap
 portal with the local LGTM (grafana) instance:
 
-`docker create network emap-portal-grafana`
+`docker network create emap-portal-grafana`
 
 ##### run it!
 
