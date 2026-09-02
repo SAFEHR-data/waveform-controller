@@ -1,3 +1,9 @@
+x-proxy-common: &proxy-common
+  HTTP_PROXY: ${HTTP_PROXY}
+  http_proxy: ${http_proxy}
+  HTTPS_PROXY: ${HTTPS_PROXY}
+  https_proxy: ${https_proxy}
+
 services:
   waveform-controller:
     build:
@@ -5,10 +11,7 @@ services:
       dockerfile: waveform-controller/Dockerfile
       target: waveform_controller
       args:
-        HTTP_PROXY: ${HTTP_PROXY}
-        http_proxy: ${http_proxy}
-        HTTPS_PROXY: ${HTTPS_PROXY}
-        https_proxy: ${https_proxy}
+        <<: *proxy-common
     # ideally we'd use docker secrets but it's not enabled currently
     env_file:
      - ../config/controller.env
@@ -21,10 +24,7 @@ services:
       dockerfile: waveform-controller/Dockerfile
       target: waveform_exporter
       args:
-        HTTP_PROXY: ${HTTP_PROXY}
-        http_proxy: ${http_proxy}
-        HTTPS_PROXY: ${HTTPS_PROXY}
-        https_proxy: ${https_proxy}
+        <<: *proxy-common
         # Set to 1 in integration tests so COVERAGE_PROCESS_START can collect data.
         # Default 0 keeps production/dev images free of the coverage package.
         INSTALL_COVERAGE: ${INSTALL_COVERAGE:-0}
@@ -45,10 +45,7 @@ services:
       target: hasher_api
       args:
         PIXL_PACKAGE_DIR: hasher
-        HTTP_PROXY: ${HTTP_PROXY}
-        http_proxy: ${http_proxy}
-        HTTPS_PROXY: ${HTTPS_PROXY}
-        https_proxy: ${https_proxy}
+        <<: *proxy-common
     ports:
       # this is only here as a convenience for testing, we don't actually use it from the exporter
       - "127.0.0.1::8000"
@@ -65,10 +62,7 @@ services:
       context: .
       dockerfile: monitoring/Dockerfile
       args:
-        HTTP_PROXY: ${HTTP_PROXY}
-        http_proxy: ${http_proxy}
-        HTTPS_PROXY: ${HTTPS_PROXY}
-        https_proxy: ${https_proxy}
+        <<: *proxy-common
     env_file:
       - ../config/monitoring.env
     volumes:
