@@ -18,9 +18,9 @@ services:
     restart: unless-stopped
     profiles:
       - lgtm
+    env_file:
+      - ../config/lgtm.env
     environment:
-      # set this to match the emap portal page
-      GF_SERVER_ROOT_URL: "%(protocol)s://localhost:7100/local-grafana/"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
 
       # Grafana is only accessible on localhost or through password-protected
