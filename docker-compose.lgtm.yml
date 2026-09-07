@@ -18,6 +18,18 @@ services:
     restart: unless-stopped
     profiles:
       - lgtm
+    env_file:
+      - ../config/lgtm.env
+    environment:
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+      # Grafana is only accessible on localhost or through password-protected
+      # Emap portal, so some non-admin access is fine.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Editor"
+    networks:
+      - default
+      - emap-portal-grafana
     ports:
       # Grafana UI
       - "127.0.0.1:3000:3000"
@@ -25,13 +37,14 @@ services:
       - "127.0.0.1:4317:4317"
       # OTLP HTTP (OpenTelemetry default)
       - "127.0.0.1:4318:4318"
-      # Optional: query backends directly (Grafana already has them as datasources)
-      - "127.0.0.1:3200:3200" # Tempo
-      - "127.0.0.1:4040:4040" # Pyroscope
-      - "127.0.0.1:9090:9090" # Prometheus / Mimir
     volumes:
       # https://github.com/grafana/docker-otel-lgtm#persist-data-across-container-instantiation
       - lgtm-data:/data
 
 volumes:
   lgtm-data:
+
+networks:
+  # allow the emap-portal to connect to us
+  emap-portal-grafana:
+    external: true
