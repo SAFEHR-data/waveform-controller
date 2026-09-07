@@ -34,4 +34,9 @@ There shouldn't be a scenario where observation times are newer than modificatio
 (bar synthetic data).
 
 Snakemake has the ability to mark files as temporary. They are immediately deleted after they are needed.
-However, we want to keep files for a certain time after snakemake has finished.
+However, we want to keep files for a certain time after snakemake has finished, so we can't use it.
+
+
+## Configuration of janitoring service
+
+See [janitoring config example file](../config.EXAMPLE/janitoring.env.EXAMPLE) for config variables.
