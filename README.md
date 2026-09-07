@@ -141,22 +141,7 @@ Each row of the csv will contain
 
 `csn, mrn, units, samplingRate, observationTime, waveformData`
 
-### Perform a parquet conversion (including de-id)
-At the time of writing, the cron pipeline is not set up. This section shows
-how to perform an ad-hoc de-id.
-```
-docker compose run waveform-controller emap-csv-pseudon  --csv /waveform-export/original-csv/my_original_csv.csv
-```
-
-### Perform an export
-At the time of writing, the cron pipeline is not set up. This section shows
-how to perform an ad-hoc FTPS upload.
-
-Exported files must be under the WAVEFORM_PSEUDONYMISED_PARQUET directory.
-Files passed in must be given relative to this directory:
-```
-docker compose run --entrypoint "" waveform-exporter emap-send-ftps my_pseudonymised_file.parquet
-```
+See [debugging doc to investigate further](docs/debugging.md)
 
 ## Developing
 See [developing docs](docs/develop.md)

@@ -35,8 +35,6 @@ coverage = [
 
 [project.scripts]
 emap-extract-waveform = "controller:receiver"
-emap-csv-pseudon = "pseudon.pseudon:psudon_cli"
-emap-send-ftps = "exporter.ftps:do_upload_cli"
 
 [tool.pytest.ini_options]
 # Force temp dirs under the repo so Docker can mount them on macOS.
