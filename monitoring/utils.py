@@ -16,12 +16,13 @@ logger = logging.getLogger(__name__)
 def get_env(
     name: str, default: str | None = None, as_type: Optional[type] = None
 ) -> Any:
-    value = os.environ.get(name)
-    if value is None or value == "":
-        if default is not None:
-            return default
-        else:
-            raise RuntimeError(f"Environment variable {name} not set")
+    # missing -> use default, "" -> None
+    try:
+        value = os.environ.get(name)
+    except KeyError:
+        value = default
+    if not value:
+        return None
     if as_type:
         return as_type(value)
     else:

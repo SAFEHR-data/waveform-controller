@@ -90,7 +90,7 @@ services:
     env_file:
       - ../config/janitoring.env
     volumes:
-      # we are assuming this FS layout to emap saved messages
+      # This will need to be rw if we ever enable deletion for real
       - ../../waveform-saved-messages:/waveform-saved-messages:ro
       - ../waveform-export:/waveform-export:ro
     restart: unless-stopped

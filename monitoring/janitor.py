@@ -43,12 +43,19 @@ def scan_waveform_exporter_files(meter, dry_run):
     start_time = perf_counter()
     # Dirs that contain large files where we need to clean up.
     # Missing/blank env means do not clean up at all.
-    big_top_level_dirs: dict[str, Optional[float]] = {
-        "original-csv": utils.get_env("ORIGINAL_CSV_RETENTION_DAYS", None, float),
-        "original-parquet": utils.get_env(
-            "ORIGINAL_PARQUET_RETENTION_DAYS", None, float
+    big_top_level_dirs: dict[Path, Optional[float]] = {
+        WAVEFORM_EXPORT_DIR / "original-csv": utils.get_env(
+            "ORIGINAL_CSV_RETENTION_DAYS", as_type=float
         ),
-        "pseudonymised": utils.get_env("PSEUDONYMISED_RETENTION_DAYS", None, float),
+        WAVEFORM_EXPORT_DIR / "original-parquet": utils.get_env(
+            "ORIGINAL_PARQUET_RETENTION_DAYS", as_type=float
+        ),
+        WAVEFORM_EXPORT_DIR / "pseudonymised": utils.get_env(
+            "PSEUDONYMISED_RETENTION_DAYS", as_type=float
+        ),
+        SAVED_MESSAGES_DIR: utils.get_env(
+            "HL7_BZ2_ARCHIVE_RETENTION_DAYS", as_type=float
+        ),
     }
     bytes_deleted_histo = meter.create_histogram(
         "waveform.janitoring.deleted_bytes",
@@ -61,7 +68,7 @@ def scan_waveform_exporter_files(meter, dry_run):
             logger.info("Skipping %s due to empty/missing retention value", tld_name)
             continue
         tld = WAVEFORM_EXPORT_DIR / tld_name
-        tld_meter_name = tld_name.replace("-", "_")
+        tld_meter_name = tld_name.name.replace("-", "_")
         byte_count = _delete_old_files(tld, retention_days, dry_run)
         bytes_deleted_histo.record(
             byte_count,
@@ -111,7 +118,10 @@ def main(args) -> int:
 
     # shutdown, flush data
     provider = metrics.get_meter_provider()
-    provider.force_flush(timeout_millis=15000)
+
+    # (blank endpoint can return a provider that doesn't contain force_flush)
+    if hasattr(provider, "force_flush"):
+        provider.force_flush(timeout_millis=15000)
 
     return 0
 
