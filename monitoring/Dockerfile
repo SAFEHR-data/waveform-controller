@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm@sha256:8092ae2ef67061f9db412458dbdce44dbf16748fb3cae5cdbd020f467a9712d0
+FROM python:3.13-slim-bookworm@sha256:8092ae2ef67061f9db412458dbdce44dbf16748fb3cae5cdbd020f467a9712d0 AS supercronic_base
 LABEL authors="Stephen Thompson, Jeremy Stein"
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -29,12 +29,15 @@ COPY --from=ghcr.io/astral-sh/uv@sha256:e85be844203885286c60ffad8a858d48afb6c5a5
 ARG UVCACHE=/root/.cache/uv
 WORKDIR /app
 
-COPY monitoring/monitor.py monitoring/monitor.py.lock /app/
+COPY monitoring/* /app/
+RUN chmod +x /app/*.sh
+
+FROM supercronic_base AS supercronic_monitoring
 RUN uv lock --check --script monitor.py
-
 RUN --mount=type=cache,target=${UVCACHE} uv export --script monitor.py --locked | uv pip install --system -r -
+ENTRYPOINT ["/app/monitoring_entrypoint.sh"]
 
-COPY monitoring/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-ENTRYPOINT ["/app/entrypoint.sh"]
+FROM supercronic_base AS supercronic_janitoring
+RUN uv lock --check --script janitor.py
+RUN --mount=type=cache,target=${UVCACHE} uv export --script janitor.py --locked | uv pip install --system -r -
+ENTRYPOINT ["/app/janitoring_entrypoint.sh"]

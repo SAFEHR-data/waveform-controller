@@ -5,21 +5,17 @@ Run in this command in dev to update the lockfile: `uv lock --script monitoring/
 """
 
 import logging
-import os
 import shutil
 import sys
 import time
 from pathlib import Path
 from time import perf_counter
 
-from opentelemetry.metrics import Meter
 from opentelemetry import metrics
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
-    OTLPMetricExporter,
-)
+from opentelemetry.metrics import Meter
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
+import utils
 
 # /// script
 # requires-python = ">=3.13"
@@ -40,16 +36,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _env(name: str, default: str | None = None) -> str:
-    value = os.environ.get(name)
-    if value is None or value == "":
-        if default is not None:
-            return default
-        else:
-            raise RuntimeError(f"Environment variable {name} not set")
-    return value
-
-
 def _scan_directory_ages(path: Path) -> tuple[int, float | None, float | None]:
     """Return file count, newest age (seconds), oldest age (seconds)."""
     now = time.time()
@@ -65,25 +51,6 @@ def _scan_directory_ages(path: Path) -> tuple[int, float | None, float | None]:
     newest_mtime = max(mtimes)
     oldest_mtime = min(mtimes)
     return len(mtimes), now - newest_mtime, now - oldest_mtime
-
-
-def _setup_metrics(service_name: str, otlp_endpoint: str | None) -> None:
-    if not otlp_endpoint:
-        logger.error(
-            "OTEL_EXPORTER_OTLP_ENDPOINT not set; metrics will not be exported"
-        )
-        return
-
-    metrics.set_meter_provider(
-        MeterProvider(
-            resource=Resource.create({SERVICE_NAME: service_name}),
-            metric_readers=[
-                PeriodicExportingMetricReader(
-                    OTLPMetricExporter(), export_interval_millis=15000
-                )
-            ],
-        )
-    )
 
 
 def scan_hl7_bz2(meter: Meter):
@@ -147,7 +114,6 @@ def scan_waveform_exporter_files(meter):
     start_time = perf_counter()
     # dirs that contain large files where we need to track disk usage
     big_top_level_dirs = ["original-csv", "original-parquet", "pseudonymised"]
-    # dirs that won't get too large but do have other info we'll want to track
     for tld_name in big_top_level_dirs:
         tld = WAVEFORM_EXPORT_DIR / tld_name
         tld_meter_name = tld_name.replace("-", "_")
@@ -187,11 +153,11 @@ def report_disk_free_space(meter: Meter):
 
 
 def main() -> int:
-    service_name = _env("OTEL_SERVICE_NAME")
-    otlp_endpoint = _env("OTEL_EXPORTER_OTLP_ENDPOINT")
+    service_name = utils.get_env("OTEL_SERVICE_NAME")
+    otlp_endpoint = utils.get_env("OTEL_EXPORTER_OTLP_ENDPOINT")
 
     # setup
-    _setup_metrics(service_name, otlp_endpoint)
+    utils.setup_metrics(service_name, otlp_endpoint)
     meter = metrics.get_meter(INSTRUMENTATION_SCOPE)
 
     # things to measure

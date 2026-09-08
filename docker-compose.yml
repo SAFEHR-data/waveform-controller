@@ -70,12 +70,27 @@ services:
     build:
       context: .
       dockerfile: monitoring/Dockerfile
+      target: supercronic_monitoring
       args:
         <<: *proxy-common
     env_file:
       - ../config/monitoring.env
     volumes:
       # we are assuming this FS layout to emap saved messages
+      - ../../waveform-saved-messages:/waveform-saved-messages:ro
+      - ../waveform-export:/waveform-export:ro
+    restart: unless-stopped
+  waveform-janitoring:
+    build:
+      context: .
+      dockerfile: monitoring/Dockerfile
+      target: supercronic_janitoring
+      args:
+        <<: *proxy-common
+    env_file:
+      - ../config/janitoring.env
+    volumes:
+      # This will need to be rw if we ever enable deletion for real
       - ../../waveform-saved-messages:/waveform-saved-messages:ro
       - ../waveform-export:/waveform-export:ro
     restart: unless-stopped
