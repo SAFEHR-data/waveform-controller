@@ -50,7 +50,7 @@ parallel = true
 # layout
 relative_files = true
 # Relative "src" resolves to ./src on the host and /app/src in the image (WORKDIR /app).
-source = ["src"]
+source = ["src", "monitoring"]
 # Snakemake DSL, not Python 
 omit = ["**/Snakefile"]
 
