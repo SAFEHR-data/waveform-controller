@@ -3,16 +3,9 @@
 import csv
 import json
 from datetime import datetime
-import pandas as pd
 from typing import Optional
 
-from locations import (
-    WAVEFORM_ORIGINAL_CSV,
-    WAVEFORM_PSEUDONYMISED_EHR,
-    make_file_name,
-    FILE_STEM_PATTERN,
-    EHR_STEM_PATTERN_HASHED,
-)
+from locations import WAVEFORM_ORIGINAL_CSV, make_file_name, FILE_STEM_PATTERN
 
 
 def create_file_name(
@@ -100,22 +93,3 @@ def write_frame(
         ]
 
         wv_writer.writerow(row_array)
-
-
-def write_ehr(
-    df: pd.DataFrame,
-    date_str: str,
-    hashed_csn: str,
-) -> bool:
-    """Writes a frame of electronic healthcare data to a csv file.
-
-    :return: True if write was successful.
-    """
-    subs_dict = dict(date=date_str, hashed_csn=hashed_csn)
-    stem = make_file_name(EHR_STEM_PATTERN_HASHED, subs_dict)
-    filename = WAVEFORM_PSEUDONYMISED_EHR / f"{stem}_ehr.csv"
-    filename.parent.mkdir(exist_ok=True, parents=True)
-
-    df.to_csv(filename, index=False)
-
-    return True
