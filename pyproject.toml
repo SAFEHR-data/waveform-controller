@@ -12,8 +12,8 @@ dependencies = [
     "snakemake==9.14.5",
     "opentelemetry-distro==0.63b1",
     "opentelemetry-exporter-otlp-proto-http==1.42.1",
-    # need to be compatible with PIXL, which currently pins 2.9.10 (arguably it shouldn't)
-    "psycopg2-binary>=2.9.10",
+    # need to be compatible with PIXL, which currently pins 2.9.11 (arguably it shouldn't)
+    "psycopg2-binary>=2.9.11",
     "requests==2.33.0",
     # trick for making a "relative" path, works inside or outside container image
     "core @ file:///${PROJECT_ROOT}/../PIXL/pixl_core",
