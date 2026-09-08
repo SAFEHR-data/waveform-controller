@@ -9,14 +9,14 @@ from unittest.mock import Mock
 import janitor
 
 logger = logging.getLogger(__name__)
-TestFile = namedtuple("TestFile", ["id", "base", "path", "mtime"])
+InputTestFile = namedtuple("InputTestFile", ["id", "base", "path", "mtime"])
 
 
 @pytest.fixture(scope="module")
 def maybe_stale_files():
     now = datetime.now(timezone.utc)
     test_files = [
-        TestFile(
+        InputTestFile(
             id=10,
             base="saved",
             path=Path(
@@ -24,7 +24,7 @@ def maybe_stale_files():
             ),
             mtime=(now - timedelta(days=2.49)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=11,
             base="saved",
             path=Path(
@@ -32,37 +32,37 @@ def maybe_stale_files():
             ),
             mtime=(now - timedelta(days=2.51)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=20,
             base="exp",
             path=Path("original-csv/2024-09-12/foo.parquet"),
             mtime=(now - timedelta(days=5.99)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=21,
             base="exp",
             path=Path("original-csv/2024-10-12/foo.parquet"),
             mtime=(now - timedelta(days=6.01)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=30,
             base="exp",
             path=Path("original-parquet/2024-09-12/foo.parquet"),
             mtime=(now - timedelta(days=7.99)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=31,
             base="exp",
             path=Path("original-parquet/2024-10-12/foo.parquet"),
             mtime=(now - timedelta(days=8.01)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=40,
             base="exp",
             path=Path("pseudonymised/2024-09-25/foo.parquet"),
             mtime=(now - timedelta(days=11.99)).timestamp(),
         ),
-        TestFile(
+        InputTestFile(
             id=41,
             base="exp",
             path=Path("pseudonymised/2024-10-25/foo.parquet"),
