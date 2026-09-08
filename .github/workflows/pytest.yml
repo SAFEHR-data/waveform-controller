@@ -37,7 +37,8 @@ jobs:
 
       - name: Install with dependencies
         working-directory: waveform-controller
-        run: uv pip install '.[dev]'
+        # Editable so imports resolve under src/ and coverage's source=["src"] sees them.
+        run: uv pip install -e '.[dev]'
 
       - name: Prepare config env files for compose
         working-directory: waveform-controller
@@ -72,7 +73,10 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          # Run inside our repo, not the workspace root that holds both repos,
+          # so uploaded paths are repo-relative (src/...) and match the files on GitHub.
+          working-directory: waveform-controller
           # Dual checkout (this repo + PIXL) confuses slug detection; pin explicitly.
           slug: SAFEHR-data/waveform-controller
-          files: waveform-controller/coverage.xml
+          files: coverage.xml
           fail_ci_if_error: true

@@ -46,6 +46,9 @@ branch = true
 # Parallel data files so host pytest-cov and in-Docker processes can be combined.
 # Also used inside Docker via COVERAGE_PROCESS_START=/app/pyproject.toml.
 parallel = true
+# Record paths relative to the rootdir, so reports don't carry the runner's absolute
+# layout
+relative_files = true
 # Relative "src" resolves to ./src on the host and /app/src in the image (WORKDIR /app).
 source = ["src"]
 # Snakemake DSL, not Python 
