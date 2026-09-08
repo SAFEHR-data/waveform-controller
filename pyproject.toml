@@ -51,8 +51,12 @@ parallel = true
 relative_files = true
 # Relative "src" resolves to ./src on the host and /app/src in the image (WORKDIR /app).
 source = ["src", "monitoring"]
-# Snakemake DSL, not Python 
-omit = ["**/Snakefile"]
+omit = [
+    # Snakemake DSL, not Python
+    "**/Snakefile",
+    "**/test_*.py",
+    "**/tests/**",
+]
 
 # Map in-container / installed paths onto the local src/ tree for reports.
 [tool.coverage.paths]
