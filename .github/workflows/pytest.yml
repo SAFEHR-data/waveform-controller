@@ -21,8 +21,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: SAFEHR-data/PIXL
-          # this version requires some old versions of things, but we'll upgrade when we're ready
-          ref: 4a0a8392e982ce15aa84f4fdec76d425f4acd754  # pragma: allowlist secret
+          ref: e29f4b15c3b9d21c9a6e08c272aca7773311b32c  # pragma: allowlist secret
           path: PIXL
 
       - name: Install uv
