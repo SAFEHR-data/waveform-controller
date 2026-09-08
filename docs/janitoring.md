@@ -40,3 +40,26 @@ However, we want to keep files for a certain time after snakemake has finished, 
 ## Configuration of janitoring service
 
 See [janitoring config example file](../config.EXAMPLE/janitoring.env.EXAMPLE) for config variables.
+
+## Recommended procedure for enabling this feature
+
+Since deleting our precious data is inherently a risky process, I would recommend doing
+this is in a phased way.
+
+### Config change (observation phase only)
+(dry run mode is left on, host still mounts read-only)
+
+1) Set all `*_RETENTION_*` config options (see previous section) on the GAE to the intended values
+   (Recommend leaving HL7 deletion option as blank so as not to delete, unless we're really desperate).
+1) Set `JANITORING_CRON_SCHEDULE` to something not too aggressive (few times a day?)
+1) Re-up the `waveform-janitoring` container.
+
+After it's run, you can look at the container logs to get a list of files
+that would have been deleted, to check it looks good and that no irreplaceable data would be deleted accidentally.
+You can also see the number of bytes that would be deleted on Grafana.
+
+### Enable the changes for real
+Code change will be needed:
+1) Remove the `--dry-run` arg from the `janitoring_entrypoint.sh` script
+1) Change the container volume mount options for `/waveform-export` and/or `/waveform-saved-messages` from `ro` to `rw`.
+1) Re-deploy as normal
