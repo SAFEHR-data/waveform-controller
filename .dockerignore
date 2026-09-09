@@ -1,0 +1,6 @@
+**/.venv
+**/*.venv
+.idea
+.git
+**/.mypy_cache
+**/.pytest_tmp

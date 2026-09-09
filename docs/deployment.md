@@ -111,7 +111,31 @@ When the core service comes back up, it would continue to update the non-wavefor
 
 ### Waveform controller/exporter (ie. this repo)
 
-You may need to delete files in the host directory `waveform-export`, which
+#### Bring down all waveform containers and rebuild
+```
+docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm down
+# check out desired code (example)
+git checkout my_branch
+git pull
+# rebuild
+docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm build
+```
+
+#### Reconfigure
+
+Check all example config files in `config.EXAMPLE`. This shows what config files are expected to be present
+in this version of the code.
+
+Copy any that don't exist in `../config` as per the instructions in each file.
+
+Then make sure that any new/deleted variables are adjusted as appropriate.
+
+You could run this command for each file:
+`vimdiff config.EXAMPLE/exporter.env.EXAMPLE ../config/exporter.env`
+
+#### Reset data
+
+To force re-processing, you would need to delete files in the host directory `waveform-export`, which
 is bind mounted by the `waveform-controller` and `waveform-exporter` containers.
 
 Snakemake won't regenerate files if the timestamps of upstream
@@ -136,8 +160,47 @@ Bring up any Emap services that we brought down:
 Emap repo: `emap docker up -d`
 
 Bring up the waveform controller/export if you brought them down.
-Waveform repo: `docker compose up -d`
+Waveform repo: `docker compose -f docker-compose.yml  -f docker-compose.lgtm.yml --profile lgtm up -d`
+
 
 ### Replay old HL7 data
 
-Not yet supported, see https://github.com/SAFEHR-data/emap/issues/139
+Make sure you have built the image (it's the same image as waveform-reader):
+`emap docker build waveform-reader-hl7-replay`
+
+To run:
+```
+emap docker run waveform-reader-hl7-replay --start-datetime '2024-08-25T00:00:00Z' --end-datetime '2024-08-26T00:00:00Z' --source-location 'UCHT03ICURM06' --dry-run
+```
+
+Note: timestamps must be parseable by Java's Instant.parse(). Ie. in ISO long form, with hours, minutes, seconds, and UTC indicator 'Z', as shown above.
+
+Date intervals are half-open (inclusive on the start, exclusive on the end)
+
+`--source-location` is optional; all locations included if not specified; examples values: "UCHT03ICUBED19", "UCHT03ICURM08"
+Here is the
+[full list of possible values](https://github.com/SAFEHR-data/emap/blob/main/waveform-generator/src/main/java/uk/ac/ucl/rits/inform/datasources/waveform_generator/Hl7Generator.java)
+
+
+Filtering by variable is not currently possible.
+
+# Run de-id on ad adhoc basis
+
+> [!NOTE]
+> Due to the way scheduled-script.sh pulls in its config from the config file, the contents of
+> that file will override any env vars you specify on the command line below.
+
+You need to temporarily change the exporter.env config file to run this command.
+
+You are likely to want to set the following values (example date shown):
+```
+ONLY_USE_CSV_FROM_YESTERDAY=FALSE
+# something shorter than the standard 180 may be needed if you only just processed the data
+CSV_AGE_THRESHOLD_MINUTES=???
+# use actual date you want to process
+PROCESS_CSV_FROM_DATE=1234-12-12
+```
+docker compose run --entrypoint /app/exporter-scripts/scheduled-script.sh waveform-exporter
+```
+
+Remember to put the config back afterwards.

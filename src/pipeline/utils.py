@@ -1,4 +1,5 @@
 import time
+
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
@@ -9,13 +10,13 @@ from pseudon.hashing import do_hash
 from locations import (
     WAVEFORM_PSEUDONYMISED_PARQUET,
     WAVEFORM_PSEUDONYMISED_EHR,
-    WAVEFORM_FTPS_LOGS,
     HASH_LOOKUP_JSON,
     ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN_HASHED,
     EHR_STEM_PATTERN_HASHED,
     CSV_PATTERN,
     make_file_name,
+    ALL_UPLOADED_JSON,
 )
 
 
@@ -68,9 +69,8 @@ class InputCsvFile:
         final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self._subs_dict)
         return WAVEFORM_PSEUDONYMISED_PARQUET / f"{final_stem}.parquet"
 
-    def get_ftps_uploaded_file(self) -> Path:
-        final_stem = make_file_name(FILE_STEM_PATTERN_HASHED, self._subs_dict)
-        return WAVEFORM_FTPS_LOGS / (final_stem + ".ftps.uploaded.json")
+    def get_ftps_uploaded_all_file(self) -> Path:
+        return Path(make_file_name(str(ALL_UPLOADED_JSON), self._subs_dict))
 
     def get_daily_hash_lookup(self) -> Path:
         return Path(make_file_name(str(HASH_LOOKUP_JSON), self._subs_dict))
@@ -87,6 +87,12 @@ def get_file_age(file_path: Path) -> timedelta:
     return now_utc - file_time_utc
 
 
+def timestamp_for_paths() -> str:
+    """A now timestamp that is safe for being in file paths on all OSes we are using."""
+    now = datetime.now(timezone.utc)
+    return now.strftime("%Y-%m-%dT%H%M%SZ")
+
+
 def determine_eventual_outputs(
     csv_wait_time: timedelta, process_only_yesterday: bool, process_datestring: str
 ):
@@ -95,7 +101,7 @@ def determine_eventual_outputs(
     :param process_only_yesterday: if false we process all dates, true only from yesterday
     :param process_datestring: a regular expression to match datestrings. Has no effect if
     process_only_yesterday is true
-    :returns: A list of InputCsvFile and a dictionary containing the hash and csn values.
+    :returns: A list of InputCsvFile and a dictionary containing the hashed csn -> csn mappings.
     """
     # Discover all CSVs using the basic file name pattern
     before = time.perf_counter()
