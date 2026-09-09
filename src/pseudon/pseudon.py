@@ -215,7 +215,7 @@ def add_waveform_metadata_to_table(
     return existing_table
 
 
-def pseudonymise_relevant_columns(df: pd.DataFrame, safe_columns: [str]):
+def pseudonymise_relevant_columns(df: pd.DataFrame, safe_columns: list[str]):
     """ "csn", "mrn", "location" are examples of columns that must be pseudonymised.
 
     However, it's safer to list which columns *don't* need to be pseudonymised. Eg. you
