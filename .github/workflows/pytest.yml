@@ -14,6 +14,13 @@ jobs:
       PROJECT_ROOT: ${{ github.workspace }}/waveform-controller
     environment: hasher
     steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SAFEHR_READ_ONLY_WORKER_ID }}
+          private-key: ${{ secrets.SAFEHR_READ_ONLY_WORKER_KEY }}
+          repositories: waveform-private-queries
       - uses: actions/checkout@v5
         with:
           path: waveform-controller
@@ -23,6 +30,13 @@ jobs:
           repository: SAFEHR-data/PIXL
           ref: e29f4b15c3b9d21c9a6e08c272aca7773311b32c  # pragma: allowlist secret
           path: PIXL
+      - name: Checkout private SQL scripts
+        uses: actions/checkout@v5
+        with:
+          repository: SAFEHR-data/waveform-private-queries
+          token: ${{ steps.generate-token.outputs.token }}
+          ref: 0345bb6e3ed51b05e46982434911c9138c84a035
+          path: waveform-private-queries
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -65,6 +79,8 @@ jobs:
             echo "AZURE_KEY_VAULT_SECRET_NAME=${AZURE_KEY_VAULT_SECRET_NAME}"
           } >> ../config/hasher.env
           
+          # install private SQL scripts
+          cp ../waveform-private-queries/src/sql/*.sql src/sql/private/
           # exporter config can't be done here because test_snakemake_integration.py wires in its own config file
 
       - name: Run the tests
