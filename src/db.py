@@ -185,7 +185,7 @@ class caboodleDB:
     ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
 
-        with open(settings.SQL_PATH + "airway.sql", "r") as file:
+        with open(settings.SQL_PATH + "private/airway.sql", "r") as file:
             airway_query = sql.SQL(file.read())
         parameters = {
             "start_datetime": start_datetime,
