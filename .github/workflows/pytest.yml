@@ -35,7 +35,7 @@ jobs:
         with:
           repository: SAFEHR-data/waveform-private-queries
           token: ${{ steps.generate-token.outputs.token }}
-          ref: 0345bb6e3ed51b05e46982434911c9138c84a035
+          ref: 0345bb6e3ed51b05e46982434911c9138c84a035  # pragma: allowlist secret
           path: waveform-private-queries
 
       - name: Install uv

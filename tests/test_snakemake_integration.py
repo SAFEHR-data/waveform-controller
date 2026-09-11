@@ -378,7 +378,7 @@ def _run_snakemake(tmp_path):
         "STARDB_TESTING=TRUE\n"
         "CABOODLE_TESTING=TRUE\n"
         "SQL_PATH=/app/src/sql/\n"
-        "SCHEMA_NAME=\n" # in testing mode, value doesn't matter but it has to exist
+        "SCHEMA_NAME=\n"  # in testing mode, value doesn't matter but it has to exist
     )
 
     # Collect coverage from Python processes inside the exporter container
