@@ -171,9 +171,11 @@ def test_controller_callback(
 
     emap_db_mock = Mock()
     if db_connect_failure:
-        emap_db_mock.get_row.side_effect = ConnectionError("mock database error")
+        emap_db_mock.get_matched_mrn.side_effect = ConnectionError(
+            "mock database error"
+        )
     else:
-        emap_db_mock.get_row.return_value = ("mrn", "nhsno", "csn", opt_out)
+        emap_db_mock.get_matched_mrn.return_value = ("mrn", "nhsno", "csn", opt_out)
     monkeypatch.setattr("controller.db.starDB", Mock(return_value=emap_db_mock))
 
     write_frame_mock = Mock()
@@ -207,12 +209,12 @@ def test_controller_callback(
     was_bad_data = bad_data_type or lf_value_type == "both"
     if not was_bad_data:
         # we at least tried to query the DB
-        emap_db_mock.get_row.assert_called_once()
+        emap_db_mock.get_matched_mrn.assert_called_once()
 
     if was_bad_data:
         write_frame_mock.assert_not_called()
         # db should not even have been queried if data was bad
-        emap_db_mock.get_row.assert_not_called()
+        emap_db_mock.get_matched_mrn.assert_not_called()
         channel_mock.basic_reject.assert_called_once_with(delivery_tag, False)
         channel_mock.basic_ack.assert_not_called()
     elif db_connect_failure:

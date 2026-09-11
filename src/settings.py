@@ -22,6 +22,7 @@ get_from_env("UDS_HOST")
 get_from_env("UDS_PORT")
 get_from_env("UDS_CONNECT_TIMEOUT")
 get_from_env("UDS_QUERY_TIMEOUT")
+get_from_env("STARDB_TESTING")
 get_from_env("SCHEMA_NAME")
 get_from_env("RABBITMQ_USERNAME")
 get_from_env("RABBITMQ_PASSWORD")
@@ -37,9 +38,19 @@ get_from_env("FTPS_PASSWORD")
 get_from_env("HASHER_API_HOSTNAME")
 get_from_env("HASHER_API_PORT")
 
+get_from_env("CABOODLE_DBNAME")
+get_from_env("CABOODLE_USERNAME")
+get_from_env("CABOODLE_PASSWORD")
+get_from_env("CABOODLE_HOST")
+get_from_env("CABOODLE_PORT")
+get_from_env("CABOODLE_CONNECT_TIMEOUT")
+get_from_env("CABOODLE_QUERY_TIMEOUT")
+get_from_env("CABOODLE_TESTING")
+
 get_from_env("LOG_LEVEL", default_value="INFO")
 
 get_from_env("INSTANCE_NAME", required=True)
+get_from_env("SQL_PATH", default_value="./src/sql/")
 
 # OpenTelemetry: OTLP/HTTP base URL of the LGTM collector, e.g. http://lgtm:4318
 get_from_env("OTEL_EXPORTER_OTLP_ENDPOINT")

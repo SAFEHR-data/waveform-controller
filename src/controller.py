@@ -108,7 +108,6 @@ def finalise_message(outcome: MessageOutcome):
 class WaveformController:
     def __init__(self):
         self.emap_db = db.starDB()
-        self.emap_db.init_query()
         self.emap_db.connect()
 
     def waveform_callback(
@@ -210,7 +209,9 @@ class WaveformController:
         )
         lookup_success = True
         try:
-            matched_mrn = self.emap_db.get_row(location_string, observation_time)
+            matched_mrn = self.emap_db.get_matched_mrn(
+                location_string, observation_time
+            )
         except ValueError:
             lookup_success = False
             logger.error(
@@ -220,6 +221,7 @@ class WaveformController:
                 exc_info=True,
             )
             matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn", False)
+            # matched_mrn = ("1234568", "12345678", "12345678", False)
         except ConnectionError:
             logger.error("Database error, will try again", exc_info=True)
             return outcome("reject", reason="db_conn_err", requeue=True)
@@ -228,7 +230,6 @@ class WaveformController:
         if opt_out:
             logger.info("Research opt-out is set for mrn %s, not writing.", mrn)
             return outcome("reject", reason="opt_out", requeue=False)
-
         writer.write_frame(
             source_variable_id=source_variable_id,
             source_channel_id=source_channel_id,

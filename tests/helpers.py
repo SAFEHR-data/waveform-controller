@@ -69,6 +69,9 @@ class TestFileDescription:
     def get_pseudon_parquet(self):
         return f"{self.date}/{self.date}.{self.get_hashed_csn()}.{self.variable_id}.{self.channel_id}.{self.units}.parquet"
 
+    def get_pseudon_ehr(self):
+        return f"{self.date}/{self.date}.{self.get_hashed_csn()}_ehr.csv"
+
     def get_hashes(self):
         return f"{self.date}/{self.date}.hashes.json"
 
