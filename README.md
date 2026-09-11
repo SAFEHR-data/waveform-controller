@@ -64,10 +64,14 @@ separate to the Emap project root.
 
 
 ##### Clone repos
-Clone this repo (`waveform-controller`) and [PIXL](https://github.com/SAFEHR-data/PIXL),
+Clone
+* this repo (`waveform-controller`) 
+* [PIXL](https://github.com/SAFEHR-data/PIXL),
+* [Private query repo](https://github.com/SAFEHR-data/waveform-private-queries)
 both inside your root directory.
 
-Inside the PIXL repo, checkout the commit that we have pinned in [workflow file](.github/workflows/pytest.yml).
+Inside the PIXL and Private query repos, checkout the respective commits that
+we have pinned in [the workflow file](.github/workflows/pytest.yml).
 
 If on a system that has access to sensitive data, disable push remotes on all cloned repos as follows:
 ```
