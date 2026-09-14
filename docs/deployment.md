@@ -184,15 +184,14 @@ Here is the
 
 Filtering by variable is not currently possible.
 
-# Run de-id on ad adhoc basis
+# Run the Snakemake workflow on an ad hoc basis (ie. de-id, EHR lookup, upload)
 
 > [!NOTE]
 > Due to the way scheduled-script.sh pulls in its config from the config file, the contents of
-> that file will override any env vars you specify on the command line below.
+> that file will override any env vars you specify via docker below. So, temporarily
+> changing the exporter.env config file is the only way to pass in a certain config.
 
-You need to temporarily change the exporter.env config file to run this command.
-
-You are likely to want to set the following values (example date shown):
+Variables you may wish to modify:
 ```
 ONLY_USE_CSV_FROM_YESTERDAY=FALSE
 # something shorter than the standard 180 may be needed if you only just processed the data
@@ -203,4 +202,4 @@ PROCESS_CSV_FROM_DATE=1234-12-12
 docker compose run --entrypoint /app/exporter-scripts/scheduled-script.sh waveform-exporter
 ```
 
-Remember to put the config back afterwards.
+Remember to revert the config changes you made if applicable.
