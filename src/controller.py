@@ -12,7 +12,7 @@ import pika
 from pika import spec
 from pika.adapters.blocking_connection import BlockingChannel
 
-import db as db  # type:ignore
+import db_pg
 import settings as settings  # type:ignore
 import csv_writer as writer  # type:ignore
 import telemetry as telemetry  # type:ignore
@@ -107,7 +107,7 @@ def finalise_message(outcome: MessageOutcome):
 
 class WaveformController:
     def __init__(self):
-        self.emap_db = db.starDB()
+        self.emap_db = db_pg.starDB()
         self.emap_db.connect()
 
     def waveform_callback(

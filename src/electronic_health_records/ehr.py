@@ -3,7 +3,8 @@ import logging
 from datetime import datetime, timedelta
 import pandas as pd
 
-from db import caboodleDB, starDB
+from db_mssql import caboodleDB
+from db_pg import starDB
 from csv_writer import write_ehr
 from pseudon.pseudon import pseudonymise_relevant_columns
 
