@@ -1,8 +1,12 @@
 from datetime import datetime
+from typing import Optional
+
 import pandas as pd
 import psycopg2
 from psycopg2 import sql, pool
 import logging
+from importlib import resources
+
 
 import settings as settings  # type:ignore
 
@@ -10,8 +14,17 @@ logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
+def get_sql_query_with_schema(
+    query_rel_path: str, schema_name: Optional[str] = None
+) -> sql.Composable:
+    query_text_tmpl = sql.SQL((resources.files("sql") / query_rel_path).read_text())
+    if schema_name is None:
+        return query_text_tmpl
+    else:
+        return query_text_tmpl.format(schema_name=sql.Identifier(schema_name))
+
+
 class starDB:
-    mrn_lookup_query: str = ""
     connection_string: str = "dbname={} user={} password={} host={} port={} connect_timeout={} options='-c statement_timeout={}'".format(
         settings.UDS_DBNAME,  # type:ignore
         settings.UDS_USERNAME,  # type:ignore
@@ -31,14 +44,6 @@ class starDB:
                 1, 1, self.connection_string
             )
 
-    def _init_mrn_lookup_query(self) -> None:
-        with open(settings.SQL_PATH + "mrn_based_on_bed_and_datetime.sql", "r") as file:
-            self.mrn_lookup_query = sql.SQL(file.read())  # type:ignore
-
-        self.mrn_lookup_query = self.mrn_lookup_query.format(
-            schema_name=sql.Identifier(settings.SCHEMA_NAME)
-        )
-
     def get_matched_mrn(
         self, location_string: str, observation_datetime: datetime
     ) -> pd.DataFrame:
@@ -46,10 +51,11 @@ class starDB:
             "location_string": location_string,
             "observation_datetime": observation_datetime,
         }
-        if self.mrn_lookup_query == "":
-            self._init_mrn_lookup_query()
+        mrn_lookup_query = get_sql_query_with_schema(
+            "mrn_based_on_bed_and_datetime.sql", settings.SCHEMA_NAME
+        )
 
-        rows = self._get_rows(self.mrn_lookup_query, parameters)  # type: ignore
+        rows = self._get_rows(mrn_lookup_query, parameters)  # type: ignore
 
         if len(rows) != 1:
             raise ValueError(
@@ -59,10 +65,9 @@ class starDB:
         return rows[0]
 
     def get_hospital_visit_from_csn(self, csn: str) -> int:
-        with open(settings.SQL_PATH + "get_hospital_visit_id.sql", "r") as file:
-            hv_query = sql.SQL(file.read())
-
-        hv_query = hv_query.format(schema_name=sql.Identifier(settings.SCHEMA_NAME))  # type: ignore
+        hv_query = get_sql_query_with_schema(
+            "get_hospital_visit_id.sql", settings.SCHEMA_NAME
+        )
 
         parameters = {
             "csn": csn,
@@ -85,12 +90,9 @@ class starDB:
     ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
 
-        with open(settings.SQL_PATH + "flow_sheet_values.sql", "r") as file:
-            flowsheet_query = sql.SQL(file.read())
-
-        flowsheet_query = flowsheet_query.format(
-            schema_name=sql.Identifier(settings.SCHEMA_NAME)
-        )  # type: ignore
+        flowsheet_query = get_sql_query_with_schema(
+            "flow_sheet_values.sql", settings.SCHEMA_NAME
+        )
 
         parameters = {
             "start_datetime": start_datetime,
@@ -114,13 +116,9 @@ class starDB:
     ) -> pd.DataFrame:
         """Retrieve lab result data from caboodle."""
 
-        with open(settings.SQL_PATH + "lab_results.sql", "r") as file:
-            lab_result_query = sql.SQL(file.read())
-
-        lab_result_query = lab_result_query.format(
-            schema_name=sql.Identifier(settings.SCHEMA_NAME)
-        )  # type: ignore
-
+        lab_result_query = get_sql_query_with_schema(
+            "lab_results.sql", settings.SCHEMA_NAME
+        )
         parameters = {
             "start_datetime": start_datetime,
             "end_datetime": end_datetime,
@@ -143,7 +141,7 @@ class starDB:
 
         return self._get_rows(lab_result_query, parameters)
 
-    def _get_rows(self, sql_query: sql.SQL, parameters: dict):
+    def _get_rows(self, sql_query: sql.Composable, parameters: dict):
         try:
             with self.connection_pool.getconn() as db_connection:
                 with db_connection.cursor() as curs:
@@ -185,8 +183,7 @@ class caboodleDB:
     ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
 
-        with open(settings.SQL_PATH + "private/airway.sql", "r") as file:
-            airway_query = sql.SQL(file.read())
+        airway_query = get_sql_query_with_schema("private/airway.sql")
         parameters = {
             "start_datetime": start_datetime,
             "end_datetime": end_datetime,
@@ -204,7 +201,7 @@ class caboodleDB:
 
         return self._get_rows(airway_query, parameters)
 
-    def _get_rows(self, sql_query: sql.SQL, parameters: dict):
+    def _get_rows(self, sql_query: sql.Composable, parameters: dict):
         try:
             with self.connection_pool.getconn() as db_connection:
                 with db_connection.cursor() as curs:

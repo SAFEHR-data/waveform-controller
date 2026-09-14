@@ -50,7 +50,6 @@ get_from_env("CABOODLE_TESTING")
 get_from_env("LOG_LEVEL", default_value="INFO")
 
 get_from_env("INSTANCE_NAME", required=True)
-get_from_env("SQL_PATH", default_value="./src/sql/")
 
 # OpenTelemetry: OTLP/HTTP base URL of the LGTM collector, e.g. http://lgtm:4318
 get_from_env("OTEL_EXPORTER_OTLP_ENDPOINT")

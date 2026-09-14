@@ -36,6 +36,10 @@ coverage = [
 [project.scripts]
 emap-extract-waveform = "controller:receiver"
 
+# Include .sql files as part of the package (otherwise only editable installs would work)
+[tool.setuptools.package-data]
+sql = ["*.sql", "private/*.sql"]
+
 [tool.pytest.ini_options]
 # Force temp dirs under the repo so Docker can mount them on macOS.
 # The default under /private/var/folders seems to silently fail (gives you an empty directory)

@@ -377,7 +377,6 @@ def _run_snakemake(tmp_path):
         "PROCESS_CSV_FROM_DATE=\n"
         "STARDB_TESTING=TRUE\n"
         "CABOODLE_TESTING=TRUE\n"
-        "SQL_PATH=/app/src/sql/\n"
         "SCHEMA_NAME=\n"  # in testing mode, value doesn't matter but it has to exist
     )
 
@@ -412,14 +411,14 @@ def _run_snakemake(tmp_path):
         compose_args,
         cwd=REPO_ROOT,
     )
-    # for convenience print the snakemake log files if they exist (on success or error)
+    # for debugging convenience print all the log files if they exist (on success or error)
     outer_logs_dir = tmp_path / "snakemake-logs"
-    outer_logs = sorted(outer_logs_dir.glob("snakemake-outer-log*.log"))
-    if not outer_logs:
-        print("No outer logs found")
-    for ol in outer_logs:
-        print(f"Log file {ol}:")
-        print(ol.read_text())
+    all_logs = sorted(outer_logs_dir.rglob("*.log"))
+    if not all_logs:
+        print("No log files found")
+    for lf in all_logs:
+        print(f"Log file {lf}:")
+        print(lf.read_text())
     # print all output then raise if there was an error
     print(f"stdout:\n{result.stdout}\n" f"stderr:\n{result.stderr}")
     result.check_returncode()
