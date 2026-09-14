@@ -1,5 +1,4 @@
 from datetime import datetime
-from math import ceil
 
 import mssql_python
 import pandas as pd
@@ -37,14 +36,9 @@ class caboodleDB:
         self.fake_caboodle = settings.CABOODLE_TESTING == "TRUE"
         if not self.fake_caboodle:
             self.connection_string = _get_connection_string()
-            # CABOODLE_QUERY_TIMEOUT is configured in milliseconds, while
-            # mssql-python accepts whole seconds.
-            query_timeout_seconds = ceil(
-                int(settings.CABOODLE_QUERY_TIMEOUT) / 1000  # type:ignore
-            )
             self.db_connection = mssql_python.connect(
                 self.connection_string,
-                timeout=query_timeout_seconds,
+                timeout=settings.CABOODLE_QUERY_TIMEOUT,
                 attrs_before={
                     mssql_python.SQL_ATTR_LOGIN_TIMEOUT: int(
                         settings.CABOODLE_CONNECT_TIMEOUT  # type:ignore
