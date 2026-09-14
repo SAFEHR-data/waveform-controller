@@ -35,7 +35,7 @@ sledgehammer approach which is rather similar to
 * Delete all Emap tables in `star_dev` as per Emap deployment instructions.
 * Waveform: `docker compose down` to bring everything down
 * git pull and rebuild containers for the two repos.
-* **REMEMBER: that the files from waveform-private-queries repository need to be copied to the waveform-controller/src/sql directory.**
+* **REMEMBER: that the files from waveform-private-queries repository need to be copied to the waveform-controller/src/sql/private directory.**
 * Change config if necessary
 * Bring it all up again
 

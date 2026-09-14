@@ -5,7 +5,7 @@
 This is a public repository and so we cannot include any scripts that are proprietary from the hospital system EPIC.
 These are included in a separate private repository named waveform-private-queries. This has a directory structure
 
-[top-level]/src/sql
+[top-level]/src/sql/private
 
 so that it can be copied directly onto the directory structure of this repository and thus all scripts will be contained in the same place upon deployment.
 
