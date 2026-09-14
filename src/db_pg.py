@@ -5,7 +5,6 @@ import pandas as pd
 import psycopg2
 from psycopg2 import sql, pool
 import logging
-from importlib import resources
 
 
 import settings as settings  # type:ignore
@@ -23,6 +22,7 @@ def get_sql_query_with_schema(
         return query_text_tmpl
     else:
         return query_text_tmpl.format(schema_name=sql.Identifier(schema_name))
+
 
 class starDB:
     connection_string: str = "dbname={} user={} password={} host={} port={} connect_timeout={} options='-c statement_timeout={}'".format(

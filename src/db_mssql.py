@@ -1,42 +1,55 @@
 from datetime import datetime
-from typing import Optional
+from math import ceil
 
+import mssql_python
 import pandas as pd
-import psycopg2
-from psycopg2 import sql, pool
-import logging
-from importlib import resources
-
 
 import settings as settings  # type:ignore
 from db_utils import get_sql_query_text
 
-logging.basicConfig(format="%(levelname)s:%(asctime)s: %(message)s")
-logger = logging.getLogger(__name__)
+
+def _odbc_escape(value: object) -> str:
+    """Quote a value for use in an ODBC connection string."""
+    return "{" + str(value).replace("}", "}}") + "}"
+
+
+def _get_connection_string() -> str:
+    return "Server={server};Database={database};UID={username};PWD={password};".format(
+        server=_odbc_escape(
+            f"{settings.CABOODLE_HOST},{settings.CABOODLE_PORT}"  # type:ignore
+        ),
+        database=_odbc_escape(settings.CABOODLE_DBNAME),  # type:ignore
+        username=_odbc_escape(settings.CABOODLE_USERNAME),  # type:ignore
+        password=_odbc_escape(settings.CABOODLE_PASSWORD),  # type:ignore
+    )
 
 
 class caboodleDB:
     """For querying the caboodle database to extract electronic healthcare records per
     patient."""
 
-    connection_string: str = "dbname={} user={} password={} host={} port={} connect_timeout={} options='-c statement_timeout={}'".format(
-        settings.CABOODLE_DBNAME,  # type:ignore
-        settings.CABOODLE_USERNAME,  # type:ignore
-        settings.CABOODLE_PASSWORD,  # type:ignore
-        settings.CABOODLE_HOST,  # type:ignore
-        settings.CABOODLE_PORT,  # type:ignore
-        settings.CABOODLE_CONNECT_TIMEOUT,  # type:ignore
-        settings.CABOODLE_QUERY_TIMEOUT,  # type:ignore
-    )
-    connection_pool: pool.SimpleConnectionPool
+    connection_string: str
+    db_connection: mssql_python.Connection
     fake_caboodle: bool = False
 
     def connect(self) -> None:
         """Set up connection to the database."""
-        self.fake_caboodle = True if settings.CABOODLE_TESTING == "TRUE" else False
+        self.fake_caboodle = settings.CABOODLE_TESTING == "TRUE"
         if not self.fake_caboodle:
-            self.connection_pool = pool.SimpleConnectionPool(
-                1, 1, self.connection_string
+            self.connection_string = _get_connection_string()
+            # CABOODLE_QUERY_TIMEOUT is configured in milliseconds, while
+            # mssql-python accepts whole seconds.
+            query_timeout_seconds = ceil(
+                int(settings.CABOODLE_QUERY_TIMEOUT) / 1000  # type:ignore
+            )
+            self.db_connection = mssql_python.connect(
+                self.connection_string,
+                timeout=query_timeout_seconds,
+                attrs_before={
+                    mssql_python.SQL_ATTR_LOGIN_TIMEOUT: int(
+                        settings.CABOODLE_CONNECT_TIMEOUT  # type:ignore
+                    )
+                },
             )
 
     def get_airflow(
@@ -62,15 +75,12 @@ class caboodleDB:
 
         return self._get_rows(airway_query, parameters)
 
-    def _get_rows(self, sql_query: sql.Composable, parameters: dict):
+    def _get_rows(self, sql_query: str, parameters: dict):
         try:
-            with self.connection_pool.getconn() as db_connection:
-                with db_connection.cursor() as curs:
-                    curs.execute(sql_query, parameters)
-                    rows = curs.fetchall()
-                self.connection_pool.putconn(db_connection)
-        except psycopg2.errors.OperationalError as e:
-            self.connection_pool.putconn(db_connection)
-            raise ConnectionError(f"Data base error: {e}")
+            with self.db_connection.cursor() as curs:
+                curs.execute(sql_query, parameters)
+                rows = curs.fetchall()
+        except mssql_python.OperationalError as e:
+            raise ConnectionError(f"Database error: {e}") from e
 
         return rows
