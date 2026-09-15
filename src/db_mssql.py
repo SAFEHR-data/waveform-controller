@@ -69,12 +69,13 @@ class caboodleDB:
 
         return self._get_rows(airway_query, parameters)
 
-    def _get_rows(self, sql_query: str, parameters: dict):
+    def _get_rows(self, sql_query: str, parameters: dict) -> pd.DataFrame:
         try:
             with self.db_connection.cursor() as curs:
                 curs.execute(sql_query, parameters)
                 rows = curs.fetchall()
+                col_names = [col.name for col in curs.description]
         except mssql_python.OperationalError as e:
             raise ConnectionError(f"Database error: {e}") from e
 
-        return rows
+        return pd.DataFrame(rows, columns=col_names)
