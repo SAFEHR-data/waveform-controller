@@ -46,7 +46,7 @@ class starDB:
 
     def get_matched_mrn(
         self, location_string: str, observation_datetime: datetime
-    ) -> pd.DataFrame:
+    ) -> tuple:
         parameters = {
             "location_string": location_string,
             "observation_datetime": observation_datetime,
@@ -55,14 +55,15 @@ class starDB:
             "mrn_based_on_bed_and_datetime.sql", settings.SCHEMA_NAME
         )
 
-        rows = self._get_rows(mrn_lookup_query, parameters)  # type: ignore
+        rows = self._get_rows(mrn_lookup_query, parameters)
 
-        if len(rows) != 1:
+        num_rows = rows.shape[0]
+        if num_rows != 1:
             raise ValueError(
-                f"Wrong number of rows returned from database. {len(rows)} != 1, for {location_string}:{observation_datetime}"
+                f"Wrong number of rows returned from database. {num_rows} != 1, for {location_string}:{observation_datetime}"
             )
 
-        return rows[0]
+        return tuple(rows.iloc[0])
 
     def get_hospital_visit_from_csn(self, csn: str) -> int:
         hv_query = get_sql_query_with_schema(
@@ -76,14 +77,7 @@ class starDB:
             return 12345678
 
         hospital_visit_id = self._get_rows(hv_query, parameters)
-
-        # fetchall returns a list of tuples. We want the first element of the first tuple
-        if not isinstance(hospital_visit_id[0][0], int):
-            logger.warning(
-                f"hospital_visit_id[0][0] is not integer {hospital_visit_id}"
-            )
-
-        return hospital_visit_id[0][0]
+        return int(hospital_visit_id["hospital_visit_id"].iloc[0])
 
     def get_flowsheets(
         self, start_datetime: datetime, end_datetime: datetime, hospital_visit_id: int
@@ -141,14 +135,15 @@ class starDB:
 
         return self._get_rows(lab_result_query, parameters)
 
-    def _get_rows(self, sql_query: sql.Composable, parameters: dict):
+    def _get_rows(self, sql_query: sql.Composable, parameters: dict) -> pd.DataFrame:
         try:
             with self.connection_pool.getconn() as db_connection:
                 with db_connection.cursor() as curs:
                     curs.execute(sql_query, parameters)
                     rows = curs.fetchall()
+                    col_names = [col.name for col in curs.description]
                 self.connection_pool.putconn(db_connection)
         except psycopg2.errors.OperationalError as e:
             self.connection_pool.putconn(db_connection)
             raise ConnectionError(f"Data base error: {e}")
-        return rows
+        return pd.DataFrame(rows, columns=col_names)
