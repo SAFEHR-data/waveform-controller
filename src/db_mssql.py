@@ -38,7 +38,7 @@ class caboodleDB:
             self.connection_string = _get_connection_string()
             self.db_connection = mssql_python.connect(
                 self.connection_string,
-                timeout=settings.CABOODLE_QUERY_TIMEOUT,
+                timeout=int(settings.CABOODLE_QUERY_TIMEOUT),
                 attrs_before={
                     mssql_python.SQL_ATTR_LOGIN_TIMEOUT: int(
                         settings.CABOODLE_CONNECT_TIMEOUT  # type:ignore
