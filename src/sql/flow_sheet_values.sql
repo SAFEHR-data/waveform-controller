@@ -40,7 +40,7 @@ LEFT JOIN {schema_name}.visit_observation_type AS vt
 
 WHERE
     vt.id_in_application IN ('6', '3040102622', '12946', '40191', '39947')
-    AND vo.valid_from >= %(start_datetime)s AND vo.valid_from < %(end$_datetime)s 
+    AND vo.valid_from >= %(start_datetime)s AND vo.valid_from < %(end_datetime)s
     AND vo.hospital_visit_id = %(hospital_visit_id)s 
 
 GROUP BY "DateTimeRecorded", "Units"
