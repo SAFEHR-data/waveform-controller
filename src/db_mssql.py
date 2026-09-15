@@ -74,7 +74,7 @@ class caboodleDB:
             with self.db_connection.cursor() as curs:
                 curs.execute(sql_query, parameters)
                 rows = curs.fetchall()
-                col_names = [col.name for col in curs.description]
+                col_names = [col[0] for col in curs.description]
         except mssql_python.OperationalError as e:
             raise ConnectionError(f"Database error: {e}") from e
 
