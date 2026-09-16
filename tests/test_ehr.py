@@ -138,16 +138,16 @@ def patch_mock_get_rows(monkeypatch):
 
 def test_ehr(monkeypatch, tmp_path):
     fake_abs_root = tmp_path.absolute()
-    fake_waveform_pseudonymised_ehr = fake_abs_root / "pseudonymised_ehr"
+    fake_waveform_pseudonymised_ehr = fake_abs_root / "pseudonymised"
     monkeypatch.setattr(
-        csv_writer, "WAVEFORM_PSEUDONYMISED_EHR", fake_waveform_pseudonymised_ehr
+        csv_writer, "WAVEFORM_PSEUDONYMISED_PARQUET", fake_waveform_pseudonymised_ehr
     )
 
     ehr_for_csv(date_str="2026-09-14", original_csn="SECRET1234", hashed_csn="fakehash")
 
     # just check the file contains something for now (it will be changing to parquet)
     expected_file = (
-        fake_waveform_pseudonymised_ehr / "2026-09-14" / "2026-09-14.fakehash_ehr.csv"
+        fake_waveform_pseudonymised_ehr / "2026-09-14" / "2026-09-14.fakehash.ehr.csv"
     )
     actual_text = expected_file.read_text()
     assert actual_text and "SECRET" not in actual_text
