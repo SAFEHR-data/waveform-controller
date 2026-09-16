@@ -1,10 +1,16 @@
 from datetime import datetime
+from typing import Any
 
 import mssql_python
 import pandas as pd
 
 import settings as settings  # type:ignore
-from db_utils import get_sql_query_text
+from db_utils import (
+    get_sql_query_text,
+    utc_to_naive_local,
+    naive_local_to_utc,
+    validate_args_must_be_utc,
+)
 
 
 def _odbc_escape(value: object) -> str:
@@ -23,9 +29,31 @@ def _get_connection_string() -> str:
     )
 
 
+def tz_adjust(value: Any) -> Any:
+    """Only relevant to data returned from MS SQL Server, convert naive local times to
+    UTC."""
+    if isinstance(value, datetime):
+        return naive_local_to_utc(value)
+    else:
+        # non-datetimes are returned unchanged
+        return value
+
+
 class caboodleDB:
     """For querying the caboodle database to extract electronic healthcare records per
-    patient."""
+    patient.
+
+    Caboodle stores its timestamps as timezone-naive SQL types
+    (`datetime` in SQL Server) that are in the local time of the hospital.
+
+    Note: hospital time is not necessarily system time!
+
+    The behaviour of the DB driver is also relevant here:
+    https://learn.microsoft.com/en-us/sql/connect/python/mssql-python/datetime-handling?view=sql-server-ver17
+
+    The waveform pipeline uses UTC wherever possible, so appropriate conversions to local time and back
+    again are the responsibility of these methods.
+    """
 
     connection_string: str
     db_connection: mssql_python.Connection
@@ -47,14 +75,18 @@ class caboodleDB:
             )
 
     def get_airflow(
-        self, start_datetime: datetime, end_datetime: datetime, csn: str
+        self, utc_start_datetime: datetime, utc_end_datetime: datetime, csn: str
     ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
+        validate_args_must_be_utc(utc_start_datetime, utc_end_datetime)
+
+        local_start_datetime = utc_to_naive_local(utc_start_datetime)
+        local_end_datetime = utc_to_naive_local(utc_end_datetime)
 
         airway_query = get_sql_query_text("private/airway.sql")
         parameters = {
-            "start_datetime": start_datetime,
-            "end_datetime": end_datetime,
+            "start_datetime": local_start_datetime,
+            "end_datetime": local_end_datetime,
             "csn": csn,
         }
 
@@ -67,9 +99,11 @@ class caboodleDB:
             }
             return pd.DataFrame(data=fake_airway)
 
-        return self._get_rows(airway_query, parameters)
+        rows, columns = self._get_rows(airway_query, parameters)
+        rows_adjusted = [tuple(tz_adjust(v) for v in r) for r in rows]
+        return pd.DataFrame(rows_adjusted, columns=columns)
 
-    def _get_rows(self, sql_query: str, parameters: dict) -> pd.DataFrame:
+    def _get_rows(self, sql_query: str, parameters: dict) -> tuple[list, list[str]]:
         try:
             with self.db_connection.cursor() as curs:
                 curs.execute(sql_query, parameters)
@@ -78,4 +112,4 @@ class caboodleDB:
         except mssql_python.OperationalError as e:
             raise ConnectionError(f"Database error: {e}") from e
 
-        return pd.DataFrame(rows, columns=col_names)
+        return rows, col_names

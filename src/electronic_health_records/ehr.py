@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from db_mssql import caboodleDB
@@ -43,23 +43,28 @@ def _ehr_for_csv(
 
     logger.info("Looking for airway data for %s.", hashed_csn)
 
-    start_datetime = datetime.strptime(date_str, "%Y-%m-%d")
-    end_datetime = start_datetime + timedelta(days=1)
+    # When waveform data is grouped into days, it's always in UTC, so calculate the day
+    # boundaries as UTC.
+    utc_start_datetime = datetime.strptime(date_str, "%Y-%m-%d").replace(
+        tzinfo=timezone.utc
+    )
+    utc_end_datetime = utc_start_datetime + timedelta(days=1)
 
     # we need hospital visit id for flowsheet and lab_result queries
     hospital_visit_id = star_connection.get_hospital_visit_from_csn(original_csn)
 
     # fetch data from caboodle
     airflow = caboodle_connection.get_airflow(
-        start_datetime, end_datetime, original_csn
+        utc_start_datetime, utc_end_datetime, original_csn
     )
 
+    # fetch data from Emap
     flowsheet_values = star_connection.get_flowsheets(
-        start_datetime, end_datetime, hospital_visit_id
+        utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
 
     lab_results = star_connection.get_lab_results(
-        start_datetime, end_datetime, hospital_visit_id
+        utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
 
     ehr_data = pd.concat([airflow, flowsheet_values, lab_results])
@@ -67,10 +72,12 @@ def _ehr_for_csv(
     # we can pseudonymise to safe, although at the moment all columns
     # are considered safe
     safe_columns = [
-        "DateTimeRecorded",
-        "PlacementInstant",
-        "RemovalInstant",
+        "TubeEventId",
+        "TubeDateTimeRecorded",
+        "TubePlacementInstant",
+        "TubeRemovalInstant",
         "TubeSize",
+        "DateTimeRecorded",
         "Repositioned",
         "Position frequency",
         "Temperature",
