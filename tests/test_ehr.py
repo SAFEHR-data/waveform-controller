@@ -53,6 +53,28 @@ def patch_mock_get_rows(monkeypatch):
                 ),
             ]
             return rows, col_names
+        elif query == get_sql_query_text("private/sputum_secretions.sql"):
+            col_names = [
+                "SecrDateTimeRecorded",
+                "SecrSecretions",
+                "SecrSputum",
+                "SecrComments",
+            ]
+            rows = [
+                (
+                    datetime(2026, 9, 14, 3, 30),
+                    "Small",
+                    None,
+                    "",
+                ),
+                (
+                    datetime(2026, 9, 14, 6, 30),
+                    None,
+                    "None", # "None" as in no Sputum!
+                    "",
+                ),
+            ]
+            return rows, col_names
         else:
             raise ValueError(f"Caboodle query not recognised: {query}")
 

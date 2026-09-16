@@ -54,9 +54,16 @@ def _ehr_for_csv(
     hospital_visit_id = star_connection.get_hospital_visit_from_csn(original_csn)
 
     # fetch data from caboodle
-    airflow = caboodle_connection.get_airflow(
+    airways = caboodle_connection.get_airway(
         utc_start_datetime, utc_end_datetime, original_csn
     )
+
+    secretions = caboodle_connection.get_sputum_secretions(
+        utc_start_datetime, utc_end_datetime, original_csn
+    )
+
+    # delete csn once we no longer need it
+    del original_csn
 
     # fetch data from Emap
     flowsheet_values = star_connection.get_flowsheets(
@@ -67,7 +74,7 @@ def _ehr_for_csv(
         utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
 
-    ehr_data = pd.concat([airflow, flowsheet_values, lab_results])
+    ehr_data = pd.concat([airways, secretions, flowsheet_values, lab_results])
 
     # we can pseudonymise to safe, although at the moment all columns
     # are considered safe
@@ -77,6 +84,10 @@ def _ehr_for_csv(
         "TubePlacementInstant",
         "TubeRemovalInstant",
         "TubeSize",
+        "SecrDateTimeRecorded",
+        "SecrSecretions",
+        "SecrSputum",
+        "SecrComments",  # Free text comments could contain sensitive information. Should we hash it?
         "Repositioned",
         "Position frequency",
         "FlowsheetDateTimeRecorded",
@@ -87,12 +98,9 @@ def _ehr_for_csv(
         "FlowsheetPaCO2",
         "FlowsheetUnits",
         "LabDateTimeRecorded",
-        "Secretions",
-        "Sputum",
         "LabUnits",
         "LabCRP",
         "LabWCC",
-        "Comments",  # Free text comments could contain sensitive information. Should we hash it?
     ]
 
     ehr_data = pseudonymise_relevant_columns(ehr_data, safe_columns)

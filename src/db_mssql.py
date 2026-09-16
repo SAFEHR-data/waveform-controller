@@ -74,7 +74,7 @@ class caboodleDB:
                 },
             )
 
-    def get_airflow(
+    def get_airway(
         self, utc_start_datetime: datetime, utc_end_datetime: datetime, csn: str
     ) -> pd.DataFrame:
         """Retrieve airflow data from database."""
@@ -102,6 +102,23 @@ class caboodleDB:
         rows, columns = self._get_rows(airway_query, parameters)
         rows_adjusted = [tuple(tz_adjust(v) for v in r) for r in rows]
         return pd.DataFrame(rows_adjusted, columns=columns)
+
+    def get_sputum_secretions(
+        self, utc_start_datetime: datetime, utc_end_datetime: datetime, csn: str
+    ) -> pd.DataFrame:
+        validate_args_must_be_utc(utc_start_datetime, utc_end_datetime)
+        local_start_datetime = utc_to_naive_local(utc_start_datetime)
+        local_end_datetime = utc_to_naive_local(utc_end_datetime)
+        secr_query = get_sql_query_text("private/sputum_secretions.sql")
+        parameters = {
+            "start_datetime": local_start_datetime,
+            "end_datetime": local_end_datetime,
+            "csn": csn,
+        }
+        rows, columns = self._get_rows(secr_query, parameters)
+        rows_adjusted = [tuple(tz_adjust(v) for v in r) for r in rows]
+        return pd.DataFrame(rows_adjusted, columns=columns)
+
 
     def _get_rows(self, sql_query: str, parameters: dict) -> tuple[list, list[str]]:
         try:
