@@ -1,7 +1,8 @@
 import logging
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
+from zoneinfo import ZoneInfo
 
 from db_mssql import caboodleDB
 from db_pg import starDB
@@ -31,6 +32,17 @@ def ehr_for_csv(date_str: str, original_csn: str, hashed_csn: str) -> None:
     )
 
 
+HOSPITAL_TZ = ZoneInfo("Europe/London")
+
+
+def utc_to_naive_local(utc_dt: datetime) -> datetime:
+    return utc_dt.astimezone(HOSPITAL_TZ).replace(tzinfo=None)
+
+
+def naive_local_to_utc(naive_dt: datetime) -> datetime:
+    return naive_dt.replace(tzinfo=HOSPITAL_TZ).astimezone(timezone.utc)
+
+
 def _ehr_for_csv(
     date_str: str,
     original_csn: str,
@@ -43,23 +55,36 @@ def _ehr_for_csv(
 
     logger.info("Looking for airway data for %s.", hashed_csn)
 
-    start_datetime = datetime.strptime(date_str, "%Y-%m-%d")
-    end_datetime = start_datetime + timedelta(days=1)
+    # When waveform data is grouped into days, it's always in UTC, so calculate the day
+    # boundaries as UTC.
+    # However, Caboodle stores its timestamps as timezone-naive SQL types
+    # (`datetime` in SQL Server) that represent the local time of the hospital.
+    # This is not necessarily the same as our system timezone, and should
+    # be configured independently!
+    # The behaviour of your DB driver is relevant here:
+    # https://learn.microsoft.com/en-us/sql/connect/python/mssql-python/datetime-handling?view=sql-server-ver17
+    utc_start_datetime = datetime.strptime(date_str, "%Y-%m-%d").replace(
+        tzinfo=timezone.utc
+    )
+    utc_end_datetime = utc_start_datetime + timedelta(days=1)
+    local_start_datetime = utc_to_naive_local(utc_start_datetime)
+    local_end_datetime = utc_to_naive_local(utc_end_datetime)
 
     # we need hospital visit id for flowsheet and lab_result queries
     hospital_visit_id = star_connection.get_hospital_visit_from_csn(original_csn)
 
-    # fetch data from caboodle
+    # fetch data from caboodle, which uses local naive timestamps
     airflow = caboodle_connection.get_airflow(
-        start_datetime, end_datetime, original_csn
+        local_start_datetime, local_end_datetime, original_csn
     )
 
+    # Emap uses explicit UTC for its timestamps
     flowsheet_values = star_connection.get_flowsheets(
-        start_datetime, end_datetime, hospital_visit_id
+        utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
 
     lab_results = star_connection.get_lab_results(
-        start_datetime, end_datetime, hospital_visit_id
+        utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
 
     ehr_data = pd.concat([airflow, flowsheet_values, lab_results])

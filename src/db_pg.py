@@ -6,7 +6,6 @@ import psycopg2
 from psycopg2 import sql, pool
 import logging
 
-
 import settings as settings  # type:ignore
 from db_utils import get_sql_query_text
 
@@ -55,15 +54,15 @@ class starDB:
             "mrn_based_on_bed_and_datetime.sql", settings.SCHEMA_NAME
         )
 
-        rows = self._get_rows(mrn_lookup_query, parameters)
+        rows, col_names = self._get_rows(mrn_lookup_query, parameters)
 
-        num_rows = rows.shape[0]
+        num_rows = len(rows)
         if num_rows != 1:
             raise ValueError(
                 f"Wrong number of rows returned from database. {num_rows} != 1, for {location_string}:{observation_datetime}"
             )
 
-        return tuple(rows.iloc[0])
+        return rows[0]
 
     def get_hospital_visit_from_csn(self, csn: str) -> int:
         hv_query = get_sql_query_with_schema(
@@ -76,8 +75,8 @@ class starDB:
         if self.fake_star:
             return 12345678
 
-        hospital_visit_id = self._get_rows(hv_query, parameters)
-        return int(hospital_visit_id["hospital_visit_id"].iloc[0])
+        hospital_visit_rows, col_names = self._get_rows(hv_query, parameters)
+        return int(hospital_visit_rows[0][0])
 
     def get_flowsheets(
         self, start_datetime: datetime, end_datetime: datetime, hospital_visit_id: int
@@ -103,7 +102,8 @@ class starDB:
             }
             return pd.DataFrame(data=fake_flowsheet)
 
-        return self._get_rows(flowsheet_query, parameters)
+        rows, col_names = self._get_rows(flowsheet_query, parameters)
+        return pd.DataFrame(rows, columns=col_names)
 
     def get_lab_results(
         self, start_datetime: datetime, end_datetime: datetime, hospital_visit_id: int
@@ -133,9 +133,12 @@ class starDB:
             }
             return pd.DataFrame(data=fake_lab_result)
 
-        return self._get_rows(lab_result_query, parameters)
+        rows, col_names = self._get_rows(lab_result_query, parameters)
+        return pd.DataFrame(rows, columns=col_names)
 
-    def _get_rows(self, sql_query: sql.Composable, parameters: dict) -> pd.DataFrame:
+    def _get_rows(
+        self, sql_query: sql.Composable, parameters: dict
+    ) -> tuple[list, list[str]]:
         try:
             with self.connection_pool.getconn() as db_connection:
                 with db_connection.cursor() as curs:
@@ -146,4 +149,4 @@ class starDB:
         except psycopg2.errors.OperationalError as e:
             self.connection_pool.putconn(db_connection)
             raise ConnectionError(f"Data base error: {e}")
-        return pd.DataFrame(rows, columns=col_names)
+        return rows, col_names

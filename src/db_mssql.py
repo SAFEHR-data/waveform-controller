@@ -67,9 +67,10 @@ class caboodleDB:
             }
             return pd.DataFrame(data=fake_airway)
 
-        return self._get_rows(airway_query, parameters)
+        rows, columns = self._get_rows(airway_query, parameters)
+        return pd.DataFrame(rows, columns=columns)
 
-    def _get_rows(self, sql_query: str, parameters: dict) -> pd.DataFrame:
+    def _get_rows(self, sql_query: str, parameters: dict) -> tuple[list, list[str]]:
         try:
             with self.db_connection.cursor() as curs:
                 curs.execute(sql_query, parameters)
@@ -78,4 +79,4 @@ class caboodleDB:
         except mssql_python.OperationalError as e:
             raise ConnectionError(f"Database error: {e}") from e
 
-        return pd.DataFrame(rows, columns=col_names)
+        return rows, col_names
