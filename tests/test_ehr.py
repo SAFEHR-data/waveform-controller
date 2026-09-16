@@ -26,18 +26,39 @@ def patch_mock_get_rows(monkeypatch):
     def mock_get_rows_mssql(self, query, params):
         if query == get_sql_query_text("private/airway.sql"):
             col_names = [
-                "DateTimeRecorded",
-                "PlacementInstant",
-                "RemovalInstant",
+                "TubeEventId",
+                "TubeDateTimeRecorded",
+                "TubePlacementInstant",
+                "TubeRemovalInstant",
                 "TubeSize",
             ]
-            rows = []
+            # this is based on the assumed data, not a real query
+            # Assumptions:
+            # * all return timezone-naive Python datetimes because that's what it is in the DB
+            # * placement and removal usually appear in different rows
+            rows = [
+                (
+                    10,
+                    datetime(2026, 9, 14, 3, 30),
+                    datetime(2026, 9, 14, 3, 20),
+                    None,
+                    "7 mm",
+                ),
+                (
+                    20,
+                    datetime(2026, 9, 14, 3, 30),
+                    datetime(2026, 9, 14, 3, 20),
+                    None,
+                    "7.5 mm",
+                ),
+            ]
             return rows, col_names
         else:
             raise ValueError(f"Caboodle query not recognised: {query}")
 
     def mock_get_rows_pg(self, query, params):
         if query == get_sql_query_with_schema("lab_results.sql", settings.SCHEMA_NAME):
+            # this is based on real queries
             rows = [
                 (
                     datetime(
@@ -70,7 +91,7 @@ def patch_mock_get_rows(monkeypatch):
                 "PaCO2",
                 "Units",
             ]
-            # example flowsheets
+            # example flowsheets, based on real queries
             rows = [
                 # Noradrenaline (shouldn't there be a concentration or a time component to the unit?)
                 (
