@@ -119,7 +119,6 @@ class caboodleDB:
         rows_adjusted = [tuple(tz_adjust(v) for v in r) for r in rows]
         return pd.DataFrame(rows_adjusted, columns=columns)
 
-
     def _get_rows(self, sql_query: str, parameters: dict) -> tuple[list, list[str]]:
         try:
             with self.db_connection.cursor() as curs:

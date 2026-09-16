@@ -5,7 +5,11 @@ import pandas as pd
 
 from db_mssql import caboodleDB
 from db_pg import starDB
-from locations import make_file_name, WAVEFORM_PSEUDONYMISED_EHR, EHR_STEM_PATTERN_HASHED
+from locations import (
+    make_file_name,
+    WAVEFORM_PSEUDONYMISED_EHR,
+    EHR_STEM_PATTERN_HASHED,
+)
 from pseudon.pseudon import pseudonymise_relevant_columns, write_ehr_parquet
 
 

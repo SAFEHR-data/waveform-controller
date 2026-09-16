@@ -2,17 +2,14 @@
 
 import csv
 import json
-import pandas as pd
 
 from datetime import datetime
 from typing import Optional
 
 from locations import (
     WAVEFORM_ORIGINAL_CSV,
-    WAVEFORM_PSEUDONYMISED_EHR,
     make_file_name,
     FILE_STEM_PATTERN,
-    EHR_STEM_PATTERN_HASHED,
 )
 
 
@@ -100,5 +97,3 @@ def write_frame(
         ]
 
         wv_writer.writerow(row_array)
-
-

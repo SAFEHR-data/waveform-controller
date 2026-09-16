@@ -195,6 +195,7 @@ def csv_to_parquets(
         "Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path
     )
 
+
 def write_ehr_parquet(df: pd.DataFrame, ehr_parquet_path: Path):
     schema = pa.schema(
         [
