@@ -9,7 +9,7 @@ from typing import Optional
 
 from locations import (
     WAVEFORM_ORIGINAL_CSV,
-    WAVEFORM_PSEUDONYMISED_EHR,
+    WAVEFORM_PSEUDONYMISED_PARQUET,
     make_file_name,
     FILE_STEM_PATTERN,
     EHR_STEM_PATTERN_HASHED,
@@ -113,7 +113,7 @@ def write_ehr(
     """
     subs_dict = dict(date=date_str, hashed_csn=hashed_csn)
     stem = make_file_name(EHR_STEM_PATTERN_HASHED, subs_dict)
-    filename = WAVEFORM_PSEUDONYMISED_EHR / f"{stem}_ehr.csv"
+    filename = WAVEFORM_PSEUDONYMISED_PARQUET / f"{stem}.ehr.csv"
     filename.parent.mkdir(exist_ok=True, parents=True)
 
     df.to_csv(filename, index=False)

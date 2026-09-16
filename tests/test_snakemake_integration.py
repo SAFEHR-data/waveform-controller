@@ -283,11 +283,9 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
             tmp_path / "original-parquet" / filename.get_orig_parquet()
         )
         pseudon_path = tmp_path / "pseudonymised" / filename.get_pseudon_parquet()
-        ehr_path = tmp_path / "pseudonymised_ehr" / filename.get_pseudon_ehr()
 
         assert original_parquet_path.exists()
         assert pseudon_path.exists()
-        assert ehr_path.exists()
 
         _compare_original_parquet_to_expected(original_parquet_path, expected_data)
         _compare_parquets(original_parquet_path, pseudon_path)
@@ -312,7 +310,10 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     expected_file_counts = {"2025-01-01": 5, "2025-01-02": 1}
     _assert_date_partitioned_files(tmp_path / "original-csv", expected_file_counts)
     _assert_date_partitioned_files(tmp_path / "original-parquet", expected_file_counts)
-    _assert_date_partitioned_files(tmp_path / "pseudonymised", expected_file_counts)
+    # the pseudonymised files also include ehr files so expected file counts differ
+    _assert_date_partitioned_files(
+        tmp_path / "pseudonymised", {"2025-01-01": 7, "2025-01-02": 2}
+    )
     _assert_date_partitioned_files(
         tmp_path / "hash-lookups", {"2025-01-01": 1, "2025-01-02": 1}
     )
