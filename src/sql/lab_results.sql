@@ -3,15 +3,15 @@
 -- 686       WHITE CELL COUNT 
 
 SELECT
-    r.result_last_modified_datetime AS "DateTimeRecorded",
+    r.result_last_modified_datetime AS "LabDateTimeRecorded",
 
     MAX(r.value_as_real) FILTER
-    (WHERE r.lab_test_definition_id = '1001') AS "CRP",
+    (WHERE r.lab_test_definition_id = '1001') AS "LabCRP",
 
     MAX(r.value_as_real) FILTER
-    (WHERE r.lab_test_definition_id = '686') AS "WCC",
+    (WHERE r.lab_test_definition_id = '686') AS "LabWCC",
 
-    r.units AS "Units"
+    r.units AS "LabUnits"
 
 FROM {schema_name}.lab_result AS r
 LEFT JOIN {schema_name}.lab_order AS o

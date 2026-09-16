@@ -77,19 +77,19 @@ def patch_mock_get_rows(monkeypatch):
                     "x10^9/L",
                 ),
             ]
-            col_names = ["DateTimeRecorded", "CRP", "WCC", "Units"]
+            col_names = ["LabDateTimeRecorded", "LabCRP", "LabWCC", "LabUnits"]
             return rows, col_names
         elif query == get_sql_query_with_schema(
             "flow_sheet_values.sql", settings.SCHEMA_NAME
         ):
             col_names = [
-                "DateTimeRecorded",
-                "Temperature",
-                "Noradrenaline",
-                "Metaraminol",
-                "PaO2",
-                "PaCO2",
-                "Units",
+                "FlowsheetDateTimeRecorded",
+                "FlowsheetTemperature",
+                "FlowsheetNoradrenaline",
+                "FlowsheetMetaraminol",
+                "FlowsheetPaO2",
+                "FlowsheetPaCO2",
+                "FlowsheetUnits",
             ]
             # example flowsheets, based on real queries
             rows = [

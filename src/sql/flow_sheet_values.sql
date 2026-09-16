@@ -9,29 +9,29 @@
 
 
 SELECT
-    vo.observation_datetime AS "DateTimeRecorded",
+    vo.observation_datetime AS "FlowsheetDateTimeRecorded",
 
     MAX(vo.value_as_real) FILTER (
         WHERE vt.id_in_application = '6'
-    ) AS "Temperature",
+    ) AS "FlowsheetTemperature",
 
     MAX(vo.value_as_real) FILTER (
         WHERE vt.id_in_application = '3040102622'
-    ) AS "Noradrenaline",
+    ) AS "FlowsheetNoradrenaline",
 
     MAX(vo.value_as_real) FILTER (
         WHERE vt.id_in_application = '12946'
-    ) AS "Metaraminol",
+    ) AS "FlowsheetMetaraminol",
 
     MAX(vo.value_as_real) FILTER (
         WHERE vt.id_in_application = '40191'
-    ) AS "PaO2",
+    ) AS "FlowsheetPaO2",
 
     MAX(vo.value_as_real) FILTER (
         WHERE vt.id_in_application = '39947'
-    ) AS "PaCO2",
+    ) AS "FlowsheetPaCO2",
 
-    vo.unit AS "Units"
+    vo.unit AS "FlowsheetUnits"
 
 FROM {schema_name}.visit_observation AS vo
 
@@ -43,4 +43,4 @@ WHERE
     AND vo.valid_from >= %(start_datetime)s AND vo.valid_from < %(end_datetime)s
     AND vo.hospital_visit_id = %(hospital_visit_id)s 
 
-GROUP BY "DateTimeRecorded", "Units"
+GROUP BY "FlowsheetDateTimeRecorded", "FlowsheetUnits"
