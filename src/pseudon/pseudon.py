@@ -151,7 +151,6 @@ def csv_to_parquets(
         use_dictionary=True,
         write_statistics=True,
         write_page_index=True,
-        flavor="spark",
     )
     logger.info(
         "Done turning CSV %s to original parquet %s", csv_path, original_parquet_path
@@ -189,7 +188,6 @@ def csv_to_parquets(
         use_dictionary=True,
         write_statistics=True,
         write_page_index=True,
-        flavor="spark",
     )
     logger.info(
         "Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path
@@ -233,7 +231,8 @@ def write_ehr_parquet(df: pd.DataFrame, ehr_parquet_path: Path):
         use_dictionary=True,
         write_statistics=True,
         write_page_index=True,
-        flavor="spark",
+        # we do not use flavor="spark" here because that would
+        # use legacy INT96 timestamps which are timezone-naive.
     )
 
 

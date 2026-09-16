@@ -6,6 +6,7 @@ from db_mssql import caboodleDB
 from db_pg import starDB, get_sql_query_with_schema
 from datetime import datetime, timedelta, timezone
 
+import pyarrow.parquet as pq
 from db_utils import get_sql_query_text
 from electronic_health_records.ehr import ehr_for_csv
 
@@ -117,7 +118,7 @@ def patch_mock_get_rows(monkeypatch):
                 # Noradrenaline (shouldn't there be a concentration or a time component to the unit?)
                 (
                     datetime(
-                        2026, 9, 14, 0, 0, tzinfo=timezone(timedelta(seconds=3600))
+                        2026, 9, 14, 1, 2, tzinfo=timezone(timedelta(seconds=3600))
                     ),
                     None,
                     1.0,
@@ -129,7 +130,7 @@ def patch_mock_get_rows(monkeypatch):
                 # Temperature (why no units?)
                 (
                     datetime(
-                        2026, 9, 14, 0, 0, tzinfo=timezone(timedelta(seconds=3600))
+                        2026, 9, 14, 2, 5, tzinfo=timezone(timedelta(seconds=3600))
                     ),
                     97.5,
                     None,
@@ -171,5 +172,18 @@ def test_ehr(monkeypatch, tmp_path):
     expected_file = (
         fake_waveform_pseudonymised_ehr / "2026-09-14" / "2026-09-14.fakehash_ehr.csv"
     )
-    actual_text = expected_file.read_text()
-    assert actual_text and "SECRET" not in actual_text
+    assert expected_file.exists()
+
+    ehr_data = pq.read_table(expected_file)
+    assert ehr_data.num_rows == 8
+    df = ehr_data.to_pandas()
+
+    # always check against UTC
+    # check flowsheet temperatures
+    non_null_temps = df[df["FlowsheetTemperature"].notna()][
+        ["FlowsheetDateTimeRecorded", "FlowsheetTemperature"]
+    ]
+    assert tuple(non_null_temps.iloc[0]) == (
+        datetime(2026, 9, 14, 1, 5, tzinfo=timezone.utc),
+        97.5,
+    )
