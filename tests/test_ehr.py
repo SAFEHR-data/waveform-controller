@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 
+import pandas as pd
 import pytest
 
 from db_mssql import caboodleDB
@@ -41,13 +42,14 @@ def patch_mock_get_rows(monkeypatch):
                     10,
                     datetime(2026, 9, 14, 3, 30),
                     datetime(2026, 9, 14, 3, 20),
-                    None,
+                    # use a mix of summer and winter dates
+                    datetime(2026, 11, 14, 5, 10),
                     "7 mm",
                 ),
                 (
                     20,
-                    datetime(2026, 9, 14, 3, 30),
-                    datetime(2026, 9, 14, 3, 20),
+                    datetime(2026, 9, 14, 2, 31),
+                    datetime(2026, 9, 14, 3, 21),
                     None,
                     "7.5 mm",
                 ),
@@ -176,14 +178,56 @@ def test_ehr(monkeypatch, tmp_path):
 
     ehr_data = pq.read_table(expected_file)
     assert ehr_data.num_rows == 8
-    df = ehr_data.to_pandas()
+    df = ehr_data.to_pandas(
+        # in particular, stop ints from being loaded as floats if there are null values in the column
+        types_mapper=pd.ArrowDtype
+    )
+
+    def non_null_vals(df, flowsheet_col) -> pd.DataFrame:
+        return df[df[flowsheet_col].notna()][
+            ["FlowsheetDateTimeRecorded", flowsheet_col, "FlowsheetUnits"]
+        ]
 
     # always check against UTC
-    # check flowsheet temperatures
-    non_null_temps = df[df["FlowsheetTemperature"].notna()][
-        ["FlowsheetDateTimeRecorded", "FlowsheetTemperature"]
-    ]
-    assert tuple(non_null_temps.iloc[0]) == (
-        datetime(2026, 9, 14, 1, 5, tzinfo=timezone.utc),
-        97.5,
+    non_null_temps = non_null_vals(df, "FlowsheetTemperature")
+    assert non_null_temps.shape[0] == 1
+    row0 = non_null_temps.iloc[0]
+    assert row0[0] == datetime(2026, 9, 14, 1, 5, tzinfo=timezone.utc)
+    assert row0[1] == 97.5
+    assert pd.isna(row0[2])
+
+    non_null_norad = non_null_vals(df, "FlowsheetNoradrenaline")
+    assert non_null_norad.shape[0] == 1
+    assert tuple(non_null_norad.iloc[0]) == (
+        datetime(2026, 9, 14, 0, 2, tzinfo=timezone.utc),
+        1.0,
+        "mL",
     )
+
+    non_null_pa02 = non_null_vals(df, "FlowsheetPaO2")
+    assert non_null_pa02.shape[0] == 0
+
+    tube_events = df[df["TubeEventId"].notna()][
+        [
+            "TubeEventId",
+            "TubeDateTimeRecorded",
+            "TubePlacementInstant",
+            "TubeRemovalInstant",
+            "TubeSize",
+        ]
+    ]
+    assert tube_events.shape[0] == 2
+    assert tuple(tube_events.iloc[0]) == (
+        10,
+        datetime(2026, 9, 14, 2, 30, tzinfo=timezone.utc),
+        datetime(2026, 9, 14, 2, 20, tzinfo=timezone.utc),
+        datetime(2026, 11, 14, 5, 10, tzinfo=timezone.utc),
+        "7 mm",
+    )
+    assert tuple(tube_events.iloc[1].iloc[[0, 1, 2, 4]]) == (
+        20,
+        datetime(2026, 9, 14, 1, 31, tzinfo=timezone.utc),
+        datetime(2026, 9, 14, 2, 21, tzinfo=timezone.utc),
+        "7.5 mm",
+    )
+    assert pd.isna(tube_events.iloc[1].iloc[3])
