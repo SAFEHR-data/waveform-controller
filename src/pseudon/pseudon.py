@@ -195,6 +195,46 @@ def csv_to_parquets(
         "Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path
     )
 
+def write_ehr_parquet(df: pd.DataFrame, ehr_parquet_path: Path):
+    schema = pa.schema(
+        [
+            # for numeric types we match what's in the database, for better or worse
+            ("SecrDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("SecrSecretions", pa.string()),
+            ("SecrSputum", pa.string()),
+            ("SecrComments", pa.string()),
+            ("TubeEventId", pa.int64()),
+            ("TubeDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("TubePlacementInstant", pa.timestamp("us", tz="UTC")),
+            ("TubeRemovalInstant", pa.timestamp("us", tz="UTC")),
+            ("TubeSize", pa.string()),
+            # ("Repositioned", ),
+            # ("Position frequency", ),
+            ("FlowsheetDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("FlowsheetTemperature", pa.decimal128(18, 2)),
+            ("FlowsheetNoradrenaline", pa.decimal128(18, 2)),
+            ("FlowsheetMetaraminol", pa.decimal128(18, 2)),
+            ("FlowsheetPaO2", pa.decimal128(18, 2)),
+            ("FlowsheetPaCO2", pa.decimal128(18, 2)),
+            ("FlowsheetUnits", pa.string()),
+            ("LabDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("LabUnits", pa.string()),
+            ("LabCRP", pa.float64()),
+            ("LabWCC", pa.float64()),
+        ]
+    )
+    ehr_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
+    pq.write_table(
+        ehr_table,
+        str(ehr_parquet_path),
+        # valid values: {‘NONE’, ‘SNAPPY’, ‘GZIP’, ‘BROTLI’, ‘LZ4’, ‘ZSTD’}
+        compression="zstd",
+        use_dictionary=True,
+        write_statistics=True,
+        write_page_index=True,
+        flavor="spark",
+    )
+
 
 def add_waveform_metadata_to_table(
     existing_table: pa.Table, metadata: dict[str, Any]

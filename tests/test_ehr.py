@@ -162,7 +162,7 @@ def test_ehr(monkeypatch, tmp_path):
     fake_abs_root = tmp_path.absolute()
     fake_waveform_pseudonymised_ehr = fake_abs_root / "pseudonymised_ehr"
     monkeypatch.setattr(
-        csv_writer, "WAVEFORM_PSEUDONYMISED_EHR", fake_waveform_pseudonymised_ehr
+        "electronic_health_records.ehr.WAVEFORM_PSEUDONYMISED_EHR", fake_waveform_pseudonymised_ehr
     )
 
     ehr_for_csv(date_str="2026-09-14", original_csn="SECRET1234", hashed_csn="fakehash")

@@ -5,8 +5,8 @@ import pandas as pd
 
 from db_mssql import caboodleDB
 from db_pg import starDB
-from csv_writer import write_ehr
-from pseudon.pseudon import pseudonymise_relevant_columns
+from locations import make_file_name, WAVEFORM_PSEUDONYMISED_EHR, EHR_STEM_PATTERN_HASHED
+from pseudon.pseudon import pseudonymise_relevant_columns, write_ehr_parquet
 
 
 def ehr_for_csv(date_str: str, original_csn: str, hashed_csn: str) -> None:
@@ -87,7 +87,9 @@ def _ehr_for_csv(
         "SecrDateTimeRecorded",
         "SecrSecretions",
         "SecrSputum",
-        "SecrComments",  # Free text comments could contain sensitive information. Should we hash it?
+        # Free text comments could in principle contain sensitive information but
+        # we have assessed this particular column to be low risk
+        "SecrComments",
         "Repositioned",
         "Position frequency",
         "FlowsheetDateTimeRecorded",
@@ -104,8 +106,14 @@ def _ehr_for_csv(
     ]
 
     ehr_data = pseudonymise_relevant_columns(ehr_data, safe_columns)
+    print(ehr_data.columns)
+    print(ehr_data)
+    t = ehr_data["FlowsheetTemperature"].iloc[0]
+    print(f"({type(t)}) {t}")
 
-    write_ehr(ehr_data, date_str, hashed_csn)
+    subs_dict = dict(date=date_str, hashed_csn=hashed_csn)
+    stem = make_file_name(EHR_STEM_PATTERN_HASHED, subs_dict)
+    filename = WAVEFORM_PSEUDONYMISED_EHR / f"{stem}_ehr.csv"
+    filename.parent.mkdir(exist_ok=True, parents=True)
 
-    # delete csn once we no longer need it
-    del original_csn
+    write_ehr_parquet(ehr_data, filename)
