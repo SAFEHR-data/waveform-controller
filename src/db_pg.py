@@ -34,14 +34,9 @@ class starDB:
         settings.UDS_QUERY_TIMEOUT,  # type:ignore
     )
     connection_pool: pool.SimpleConnectionPool
-    fake_star: bool = False
 
     def connect(self) -> None:
-        self.fake_star = True if settings.STARDB_TESTING == "TRUE" else False
-        if not self.fake_star:
-            self.connection_pool = pool.SimpleConnectionPool(
-                1, 1, self.connection_string
-            )
+        self.connection_pool = pool.SimpleConnectionPool(1, 1, self.connection_string)
 
     def get_matched_mrn(
         self, location_string: str, observation_datetime: datetime
@@ -74,8 +69,6 @@ class starDB:
         parameters = {
             "csn": csn,
         }
-        if self.fake_star:
-            return 12345678
 
         hospital_visit_rows, col_names = self._get_rows(hv_query, parameters)
         return int(hospital_visit_rows[0][0])
@@ -99,15 +92,6 @@ class starDB:
             "hospital_visit_id": hospital_visit_id,
         }
 
-        if self.fake_star:
-            fake_flowsheet = {
-                "DateTimeRecorded": [0],
-                "Temperature": [0],
-                "Noradrenaline": [0],
-                "Metaraminol": [0],
-            }
-            return pd.DataFrame(data=fake_flowsheet)
-
         rows, col_names = self._get_rows(flowsheet_query, parameters)
         return pd.DataFrame(rows, columns=col_names)
 
@@ -128,20 +112,6 @@ class starDB:
             "end_datetime": utc_end_datetime,
             "hospital_visit_id": hospital_visit_id,
         }
-
-        if self.fake_star:
-            fake_lab_result = {
-                "DateTimeRecorded": [0],
-                "Units": ["None"],
-                "Abnormal_result": ["No"],
-                "Comments": ["None"],
-                "C-reactive protein 1": ["-"],
-                "CSF WCC TUBE 1": ["-"],
-                "CSF WCC TUBE 2": ["-"],
-                "CSF WCC TUBE 3": ["-"],
-                "C-reactive protein 2": ["-"],
-            }
-            return pd.DataFrame(data=fake_lab_result)
 
         rows, col_names = self._get_rows(lab_result_query, parameters)
         return pd.DataFrame(rows, columns=col_names)

@@ -57,22 +57,19 @@ class caboodleDB:
 
     connection_string: str
     db_connection: mssql_python.Connection
-    fake_caboodle: bool = False
 
     def connect(self) -> None:
         """Set up connection to the database."""
-        self.fake_caboodle = settings.CABOODLE_TESTING == "TRUE"
-        if not self.fake_caboodle:
-            self.connection_string = _get_connection_string()
-            self.db_connection = mssql_python.connect(
-                self.connection_string,
-                timeout=int(settings.CABOODLE_QUERY_TIMEOUT),
-                attrs_before={
-                    mssql_python.SQL_ATTR_LOGIN_TIMEOUT: int(
-                        settings.CABOODLE_CONNECT_TIMEOUT  # type:ignore
-                    )
-                },
-            )
+        self.connection_string = _get_connection_string()
+        self.db_connection = mssql_python.connect(
+            self.connection_string,
+            timeout=int(settings.CABOODLE_QUERY_TIMEOUT),
+            attrs_before={
+                mssql_python.SQL_ATTR_LOGIN_TIMEOUT: int(
+                    settings.CABOODLE_CONNECT_TIMEOUT  # type:ignore
+                )
+            },
+        )
 
     def get_airway(
         self, utc_start_datetime: datetime, utc_end_datetime: datetime, csn: str
@@ -89,15 +86,6 @@ class caboodleDB:
             "end_datetime": local_end_datetime,
             "csn": csn,
         }
-
-        if self.fake_caboodle:
-            fake_airway = {
-                "DateTimeRecorded": [0],
-                "PlacementInstant": [0],
-                "RemovalInstant": [0],
-                "TubeSize": [0],
-            }
-            return pd.DataFrame(data=fake_airway)
 
         rows, columns = self._get_rows(airway_query, parameters)
         rows_adjusted = [tuple(tz_adjust(v) for v in r) for r in rows]
