@@ -127,6 +127,9 @@ rule csv_to_parquet:
 def pseudonymised_parquet_files_for_date(wc):
     return [ao.get_pseudonymised_parquet_path() for ao in all_outputs if ao.date == wc.date]
 
+def ehr_outputs_for_date(wc):
+    # several CSVs might map to the same EHR lookup file (the latter is per-CSN)
+    return set((ao.get_ehr_lookup() for ao in all_outputs if ao.date == wc.date))
 
 def pseudonymised_parquet_files_for_date_and_hashed_csn(wc):
     return [
@@ -191,6 +194,7 @@ rule send_all_ftps:
         # so consume our one and only instance of this resource
         ftps_server=1
     input:
+        ehr_outputs = ehr_outputs_for_date,
         pseudonymised_parquets = pseudonymised_parquet_files_for_date
     output:
         # Files are uploaded as a temporary tar file, so there is only one sentinel,
@@ -204,7 +208,8 @@ rule send_all_ftps:
         file_safe_timestamp = timestamp_for_paths()
         remote_tar_filename = f"upload.{file_safe_timestamp}.tar"
 
-        perf_time = do_upload_multiple_with_telemetry([Path(i) for i in input], remote_tar_filename, wildcards.date)
+        files_for_upload = [Path(i) for i in input]
+        perf_time = do_upload_multiple_with_telemetry(files_for_upload, remote_tar_filename, wildcards.date)
 
         end_timestamp = datetime.now(timezone.utc).isoformat()
         # Success, create the sentinel file, which also contains a manifest for the
@@ -225,6 +230,6 @@ rule send_all_ftps:
                 "local_tar_file": remote_tar_filename,
             },
             dated_sentinel_file,
-            list(input.pseudonymised_parquets)
+            list(input),
         )
         shutil.copy(dated_sentinel_file, output.overall_uploaded_sentinel)
