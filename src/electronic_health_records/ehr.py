@@ -94,6 +94,7 @@ def _ehr_for_csn(
         "TubePlacementInstant",
         "TubeRemovalInstant",
         "TubeSize",
+        "TubeType",
         "SecrDateTimeRecorded",
         "SecrSecretions",
         "SecrSputum",

@@ -33,6 +33,7 @@ def patch_mock_get_rows(monkeypatch):
                 "TubeDateTimeRecorded",
                 "TubePlacementInstant",
                 "TubeRemovalInstant",
+                "TubeType",
                 "TubeSize",
             ]
             # this is based on the assumed data, not a real query
@@ -45,6 +46,7 @@ def patch_mock_get_rows(monkeypatch):
                     datetime(2026, 9, 14, 3, 20),
                     # use a mix of summer and winter dates
                     datetime(2026, 11, 14, 5, 10),
+                    "type1",
                     "7 mm",
                 ),
                 (
@@ -52,6 +54,7 @@ def patch_mock_get_rows(monkeypatch):
                     datetime(2026, 9, 14, 2, 31),
                     datetime(2026, 9, 14, 3, 21),
                     None,
+                    "type2",
                     "7.5 mm",
                 ),
             ]
@@ -231,27 +234,39 @@ def test_ehr(monkeypatch, tmp_path):
             "TubeDateTimeRecorded",
             "TubePlacementInstant",
             "TubeRemovalInstant",
+            "TubeType",
             "TubeSize",
         ]
     ]
-    assert actual_tube_events.shape[0] == 2
-    assert tuple(actual_tube_events.iloc[0]) == (
-        10,
-        datetime(2026, 9, 14, 2, 30, tzinfo=timezone.utc),
-        datetime(2026, 9, 14, 2, 20, tzinfo=timezone.utc),
-        datetime(2026, 11, 14, 5, 10, tzinfo=timezone.utc),
-        "7 mm",
-    )
-    assert tuple(actual_tube_events.iloc[1].iloc[[0, 1, 2, 4]]) == (
-        20,
-        datetime(2026, 9, 14, 1, 31, tzinfo=timezone.utc),
-        datetime(2026, 9, 14, 2, 21, tzinfo=timezone.utc),
-        "7.5 mm",
-    )
-    assert pd.isna(actual_tube_events.iloc[1].iloc[3])
 
     # pd.testing.assert_frame_equal handles None/nan nicely, so use it
     # when values might be missing
+    pd.testing.assert_frame_equal(
+        actual_tube_events,
+        pd.DataFrame(
+            [
+                (
+                    10,
+                    datetime(2026, 9, 14, 2, 30, tzinfo=timezone.utc),
+                    datetime(2026, 9, 14, 2, 20, tzinfo=timezone.utc),
+                    datetime(2026, 11, 14, 5, 10, tzinfo=timezone.utc),
+                    "type1",
+                    "7 mm",
+                ),
+                (
+                    20,
+                    datetime(2026, 9, 14, 1, 31, tzinfo=timezone.utc),
+                    datetime(2026, 9, 14, 2, 21, tzinfo=timezone.utc),
+                    None,
+                    "type2",
+                    "7.5 mm",
+                ),
+            ],
+            columns=actual_tube_events.columns,
+        ),
+        check_dtype=False,
+    )
+
     actual_secrs = df[df["SecrDateTimeRecorded"].notna()][
         ["SecrDateTimeRecorded", "SecrSecretions", "SecrSputum", "SecrComments"]
     ].reset_index(drop=True)

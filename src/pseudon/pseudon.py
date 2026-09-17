@@ -206,6 +206,7 @@ def write_ehr_parquet(df: pd.DataFrame, ehr_parquet_path: Path):
             ("TubeDateTimeRecorded", pa.timestamp("us", tz="UTC")),
             ("TubePlacementInstant", pa.timestamp("us", tz="UTC")),
             ("TubeRemovalInstant", pa.timestamp("us", tz="UTC")),
+            ("TubeType", pa.string()),
             ("TubeSize", pa.string()),
             # ("Repositioned", ),
             # ("Position frequency", ),
