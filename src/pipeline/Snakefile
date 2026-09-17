@@ -12,14 +12,14 @@ from locations import (
     HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
     FILE_STEM_PATTERN_HASHED,
-    EHR_STEM_PATTERN_HASHED,
+    EHR_FILE_PATTERN_HASHED,
     make_file_name,
     ALL_UPLOADED_JSON,
-    ALL_FTPS_LOG,
+    ALL_FTPS_LOG, EHR_STEM_PATTERN_HASHED,
 )
 from pipeline.utils import config_bool, determine_eventual_outputs, timestamp_for_paths
 from pseudon.pseudon import csv_to_parquets
-from electronic_health_records.ehr import ehr_for_csv
+from electronic_health_records.ehr import ehr_for_csn
 
 
 # How long before we assume that no more data will be written to the file, and
@@ -143,14 +143,15 @@ rule ehr_lookup:
         # and reruns if the underlying data for this csn/day changes.
         pseudonymised_parquets = pseudonymised_parquet_files_for_date_and_hashed_csn
     output:
-        WAVEFORM_PSEUDONYMISED_PARQUET / (EHR_STEM_PATTERN_HASHED + ".ehr.csv")
+        ehr_output = WAVEFORM_PSEUDONYMISED_PARQUET / EHR_FILE_PATTERN_HASHED
     log:
         WAVEFORM_SNAKEMAKE_LOGS / "ehr_lookup" / (EHR_STEM_PATTERN_HASHED + ".log")
     run:
         logger = configure_file_logging(log[0])
         original_csn = hash_to_csn[wildcards.hashed_csn]
-        logger.info("Running EHR look up for csn %s. Hash -> %s", original_csn, wildcards.hashed_csn)
-        ehr_for_csv(
+        logger.info("Running EHR look up for csn %s. Hash -> %s. File -> %s", original_csn, wildcards.hashed_csn, output.ehr_output)
+        ehr_for_csn(
+            filename=output.ehr_output,
             date_str=wildcards.date,
             original_csn=original_csn,
             hashed_csn=wildcards.hashed_csn)

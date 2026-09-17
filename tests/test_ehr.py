@@ -8,9 +8,10 @@ from db_pg import starDB, get_sql_query_with_schema
 from datetime import datetime, timedelta, timezone
 import pyarrow.parquet as pq
 from db_utils import get_sql_query_text
-from electronic_health_records.ehr import ehr_for_csv
+from electronic_health_records.ehr import ehr_for_csn
 
 import settings
+from pipeline.utils import InputCsvFile
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -162,18 +163,35 @@ def patch_mock_get_rows(monkeypatch):
 
 def test_ehr(monkeypatch, tmp_path):
     fake_abs_root = tmp_path.absolute()
-    fake_waveform_pseudonymised_ehr = fake_abs_root / "pseudonymised"
+    orig_csn = "SECRET1234"
+    hashed_csn = "fakehash"
+    date_str = "2026-09-14"
+    fake_waveform_pseudonymised = fake_abs_root / "pseudonymised"
+
     monkeypatch.setattr(
-        "electronic_health_records.ehr.WAVEFORM_PSEUDONYMISED_PARQUET",
-        fake_waveform_pseudonymised_ehr,
+        "pipeline.utils.hash_csn",
+        Mock(return_value=hashed_csn),
     )
 
-    ehr_for_csv(date_str="2026-09-14", original_csn="SECRET1234", hashed_csn="fakehash")
+    monkeypatch.setattr(
+        "pipeline.utils.WAVEFORM_PSEUDONYMISED_PARQUET",
+        fake_waveform_pseudonymised,
+    )
+    input_csv = InputCsvFile(date_str, orig_csn, "dontcare", "dontcare", "dontcare")
+    expected_file = input_csv.get_ehr_lookup()
+
+    assert expected_file == (
+        fake_waveform_pseudonymised
+        / "ehr"
+        / "2026-09-14"
+        / "2026-09-14.fakehash.ehr.parquet"
+    )
+    assert not expected_file.exists()
+    ehr_for_csn(
+        expected_file, date_str=date_str, original_csn=orig_csn, hashed_csn=hashed_csn
+    )
 
     # just check the file contains something for now (it will be changing to parquet)
-    expected_file = (
-        fake_waveform_pseudonymised_ehr / "2026-09-14" / "2026-09-14.fakehash.ehr.csv"
-    )
     assert expected_file.exists()
 
     ehr_data = pq.read_table(expected_file)

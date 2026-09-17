@@ -15,7 +15,8 @@ FILE_STEM_PATTERN_HASHED = (
     "{date}/{date}.{hashed_csn}.{variable_id}.{channel_id}.{units}"
 )
 # EHR data is per (date, csn), not per variable/channel/units, so it gets its own stem.
-EHR_STEM_PATTERN_HASHED = "{date}/{date}.{hashed_csn}"
+EHR_STEM_PATTERN_HASHED = "ehr/{date}/{date}.{hashed_csn}.ehr"
+EHR_FILE_PATTERN_HASHED = EHR_STEM_PATTERN_HASHED + ".parquet"
 CSV_PATTERN = WAVEFORM_ORIGINAL_CSV / (FILE_STEM_PATTERN + ".csv")
 ORIGINAL_PARQUET_PATTERN = WAVEFORM_ORIGINAL_PARQUET / (FILE_STEM_PATTERN + ".parquet")
 PSEUDONYMISED_PARQUET_PATTERN = WAVEFORM_PSEUDONYMISED_PARQUET / (

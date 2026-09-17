@@ -12,7 +12,7 @@ from locations import (
     HASH_LOOKUP_JSON,
     ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN_HASHED,
-    EHR_STEM_PATTERN_HASHED,
+    EHR_FILE_PATTERN_HASHED,
     CSV_PATTERN,
     make_file_name,
     ALL_UPLOADED_JSON,
@@ -35,9 +35,11 @@ def hash_csn(csn: str) -> str:
 
 class InputCsvFile:
     """Represent the different files in the pipeline from the point of view of one csn +
-    day + variable + channel combination (ie.
+    day + variable + channel combination (ie one "original CSV" file). These files are
+    glued together by the Snakemake rules.
 
-    one "original CSV" file). These files are glued together by the Snakemake rules.
+    Note that there is a many to one relationship between a CSV file and some of the
+    files described here.
     """
 
     def __init__(
@@ -75,8 +77,8 @@ class InputCsvFile:
         return Path(make_file_name(str(HASH_LOOKUP_JSON), self._subs_dict))
 
     def get_ehr_lookup(self) -> Path:
-        final_stem = make_file_name(EHR_STEM_PATTERN_HASHED, self._subs_dict)
-        return WAVEFORM_PSEUDONYMISED_PARQUET / f"{final_stem}.ehr.csv"
+        rel_file_path = make_file_name(EHR_FILE_PATTERN_HASHED, self._subs_dict)
+        return WAVEFORM_PSEUDONYMISED_PARQUET / rel_file_path
 
 
 def get_file_age(file_path: Path) -> timedelta:

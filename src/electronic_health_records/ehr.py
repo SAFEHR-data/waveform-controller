@@ -1,24 +1,24 @@
 import logging
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
 import pandas as pd
 
 from db_mssql import caboodleDB
 from db_pg import starDB
-from locations import (
-    make_file_name,
-    EHR_STEM_PATTERN_HASHED,
-    WAVEFORM_PSEUDONYMISED_PARQUET,
-)
 from pseudon.pseudon import pseudonymise_relevant_columns, write_ehr_parquet
 
 
-def ehr_for_csv(date_str: str, original_csn: str, hashed_csn: str) -> None:
+def ehr_for_csn(
+    filename: Path, date_str: str, original_csn: str, hashed_csn: str
+) -> None:
     """Extracts electronic healthcare records for a given csn and writes the results to
     a pseudonymised csv file for a single day.
 
     This is a privacy-sensitive area of code. Unhashed CSNs must not appear in uploaded
     files.
+    :param filename: Path to the output EHR file
     :param date_str: the date to look up data for
     :param original_csn: the csn to base look up on.
     :param hashed_csn: the pseudonymised hash to use for file output.
@@ -30,12 +30,18 @@ def ehr_for_csv(date_str: str, original_csn: str, hashed_csn: str) -> None:
     star_connection = starDB()
     star_connection.connect()
 
-    _ehr_for_csv(
-        date_str, original_csn, hashed_csn, caboodle_connection, star_connection
+    _ehr_for_csn(
+        filename,
+        date_str,
+        original_csn,
+        hashed_csn,
+        caboodle_connection,
+        star_connection,
     )
 
 
-def _ehr_for_csv(
+def _ehr_for_csn(
+    filename: Path,
     date_str: str,
     original_csn: str,
     hashed_csn: str,
@@ -110,14 +116,6 @@ def _ehr_for_csv(
     ]
 
     ehr_data = pseudonymise_relevant_columns(ehr_data, safe_columns)
-    print(ehr_data.columns)
-    print(ehr_data)
-    t = ehr_data["FlowsheetTemperature"].iloc[0]
-    print(f"({type(t)}) {t}")
 
-    subs_dict = dict(date=date_str, hashed_csn=hashed_csn)
-    stem = make_file_name(EHR_STEM_PATTERN_HASHED, subs_dict)
-    filename = WAVEFORM_PSEUDONYMISED_PARQUET / f"{stem}.ehr.csv"
     filename.parent.mkdir(exist_ok=True, parents=True)
-
     write_ehr_parquet(ehr_data, filename)
