@@ -6,7 +6,6 @@ import pytest
 from db_mssql import caboodleDB
 from db_pg import starDB, get_sql_query_with_schema
 from datetime import datetime, timedelta, timezone
-
 import pyarrow.parquet as pq
 from db_utils import get_sql_query_text
 from electronic_health_records.ehr import ehr_for_csv
@@ -22,6 +21,8 @@ def patch_mock_get_rows(monkeypatch):
 
     This allows testing of some of the TZ conversion and EHR output writing files but
     doesn't test the DB behaviour (esp re TZ)
+
+    These must be manually kept in step with the columns returned by the queries
     """
 
     def mock_get_rows_mssql(self, query, params):
@@ -36,7 +37,6 @@ def patch_mock_get_rows(monkeypatch):
             # this is based on the assumed data, not a real query
             # Assumptions:
             # * all return timezone-naive Python datetimes because that's what it is in the DB
-            # * placement and removal usually appear in different rows
             rows = [
                 (
                     10,
@@ -189,25 +189,25 @@ def test_ehr(monkeypatch, tmp_path):
         ]
 
     # always check against UTC
-    non_null_temps = non_null_vals(df, "FlowsheetTemperature")
-    assert non_null_temps.shape[0] == 1
-    row0 = non_null_temps.iloc[0]
+    actual_temps = non_null_vals(df, "FlowsheetTemperature")
+    assert actual_temps.shape[0] == 1
+    row0 = actual_temps.iloc[0]
     assert row0[0] == datetime(2026, 9, 14, 1, 5, tzinfo=timezone.utc)
     assert row0[1] == 97.5
     assert pd.isna(row0[2])
 
-    non_null_norad = non_null_vals(df, "FlowsheetNoradrenaline")
-    assert non_null_norad.shape[0] == 1
-    assert tuple(non_null_norad.iloc[0]) == (
+    actual_norad = non_null_vals(df, "FlowsheetNoradrenaline")
+    assert actual_norad.shape[0] == 1
+    assert tuple(actual_norad.iloc[0]) == (
         datetime(2026, 9, 14, 0, 2, tzinfo=timezone.utc),
         1.0,
         "mL",
     )
 
-    non_null_pa02 = non_null_vals(df, "FlowsheetPaO2")
-    assert non_null_pa02.shape[0] == 0
+    actual_pa02 = non_null_vals(df, "FlowsheetPaO2")
+    assert actual_pa02.shape[0] == 0
 
-    tube_events = df[df["TubeEventId"].notna()][
+    actual_tube_events = df[df["TubeEventId"].notna()][
         [
             "TubeEventId",
             "TubeDateTimeRecorded",
@@ -216,18 +216,71 @@ def test_ehr(monkeypatch, tmp_path):
             "TubeSize",
         ]
     ]
-    assert tube_events.shape[0] == 2
-    assert tuple(tube_events.iloc[0]) == (
+    assert actual_tube_events.shape[0] == 2
+    assert tuple(actual_tube_events.iloc[0]) == (
         10,
         datetime(2026, 9, 14, 2, 30, tzinfo=timezone.utc),
         datetime(2026, 9, 14, 2, 20, tzinfo=timezone.utc),
         datetime(2026, 11, 14, 5, 10, tzinfo=timezone.utc),
         "7 mm",
     )
-    assert tuple(tube_events.iloc[1].iloc[[0, 1, 2, 4]]) == (
+    assert tuple(actual_tube_events.iloc[1].iloc[[0, 1, 2, 4]]) == (
         20,
         datetime(2026, 9, 14, 1, 31, tzinfo=timezone.utc),
         datetime(2026, 9, 14, 2, 21, tzinfo=timezone.utc),
         "7.5 mm",
     )
-    assert pd.isna(tube_events.iloc[1].iloc[3])
+    assert pd.isna(actual_tube_events.iloc[1].iloc[3])
+
+    # pd.testing.assert_frame_equal handles None/nan nicely, so use it
+    # when values might be missing
+    actual_secrs = df[df["SecrDateTimeRecorded"].notna()][
+        ["SecrDateTimeRecorded", "SecrSecretions", "SecrSputum", "SecrComments"]
+    ].reset_index(drop=True)
+    pd.testing.assert_frame_equal(
+        actual_secrs,
+        pd.DataFrame(
+            [
+                (
+                    datetime(2026, 9, 14, 2, 30, tzinfo=timezone.utc),
+                    "Small",
+                    None,
+                    "",
+                ),
+                (
+                    datetime(2026, 9, 14, 5, 30, tzinfo=timezone.utc),
+                    None,
+                    "None",
+                    "",
+                ),
+            ],
+            columns=actual_secrs.columns,
+        ),
+        check_dtype=False,
+    )
+
+    actual_labs = df[df["LabDateTimeRecorded"].notna()][
+        ["LabDateTimeRecorded", "LabCRP", "LabWCC", "LabUnits"]
+    ].reset_index(drop=True)
+
+    pd.testing.assert_frame_equal(
+        actual_labs,
+        pd.DataFrame(
+            [
+                (
+                    datetime(2026, 9, 14, 5, 30, tzinfo=timezone.utc),
+                    30.1,
+                    None,
+                    "mg/L",
+                ),
+                (
+                    datetime(2026, 9, 14, 5, 39, tzinfo=timezone.utc),
+                    None,
+                    30.21,
+                    "x10^9/L",
+                ),
+            ],
+            columns=actual_labs.columns,
+        ),
+        check_dtype=False,
+    )
