@@ -24,4 +24,4 @@ WHERE
     AND r.result_last_modified_datetime < %(end_datetime)s
     AND o.hospital_visit_id = %(hospital_visit_id)s
 
-GROUP BY "DateTimeRecorded", "Units"
+GROUP BY "LabDateTimeRecorded", "LabUnits"
