@@ -7,8 +7,8 @@ from db_mssql import caboodleDB
 from db_pg import starDB
 from locations import (
     make_file_name,
-    WAVEFORM_PSEUDONYMISED_EHR,
     EHR_STEM_PATTERN_HASHED,
+    WAVEFORM_PSEUDONYMISED_PARQUET,
 )
 from pseudon.pseudon import pseudonymise_relevant_columns, write_ehr_parquet
 
@@ -117,7 +117,7 @@ def _ehr_for_csv(
 
     subs_dict = dict(date=date_str, hashed_csn=hashed_csn)
     stem = make_file_name(EHR_STEM_PATTERN_HASHED, subs_dict)
-    filename = WAVEFORM_PSEUDONYMISED_EHR / f"{stem}_ehr.csv"
+    filename = WAVEFORM_PSEUDONYMISED_PARQUET / f"{stem}.ehr.csv"
     filename.parent.mkdir(exist_ok=True, parents=True)
 
     write_ehr_parquet(ehr_data, filename)

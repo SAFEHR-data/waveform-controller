@@ -9,7 +9,6 @@ from snakemake.io import glob_wildcards
 from pseudon.hashing import do_hash
 from locations import (
     WAVEFORM_PSEUDONYMISED_PARQUET,
-    WAVEFORM_PSEUDONYMISED_EHR,
     HASH_LOOKUP_JSON,
     ORIGINAL_PARQUET_PATTERN,
     FILE_STEM_PATTERN_HASHED,
@@ -77,7 +76,7 @@ class InputCsvFile:
 
     def get_ehr_lookup(self) -> Path:
         final_stem = make_file_name(EHR_STEM_PATTERN_HASHED, self._subs_dict)
-        return WAVEFORM_PSEUDONYMISED_EHR / f"{final_stem}_ehr.csv"
+        return WAVEFORM_PSEUDONYMISED_PARQUET / f"{final_stem}.ehr.csv"
 
 
 def get_file_age(file_path: Path) -> timedelta:

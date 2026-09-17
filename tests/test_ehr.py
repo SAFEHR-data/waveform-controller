@@ -162,9 +162,9 @@ def patch_mock_get_rows(monkeypatch):
 
 def test_ehr(monkeypatch, tmp_path):
     fake_abs_root = tmp_path.absolute()
-    fake_waveform_pseudonymised_ehr = fake_abs_root / "pseudonymised_ehr"
+    fake_waveform_pseudonymised_ehr = fake_abs_root / "pseudonymised"
     monkeypatch.setattr(
-        "electronic_health_records.ehr.WAVEFORM_PSEUDONYMISED_EHR",
+        "electronic_health_records.ehr.WAVEFORM_PSEUDONYMISED_PARQUET",
         fake_waveform_pseudonymised_ehr,
     )
 
@@ -172,7 +172,7 @@ def test_ehr(monkeypatch, tmp_path):
 
     # just check the file contains something for now (it will be changing to parquet)
     expected_file = (
-        fake_waveform_pseudonymised_ehr / "2026-09-14" / "2026-09-14.fakehash_ehr.csv"
+        fake_waveform_pseudonymised_ehr / "2026-09-14" / "2026-09-14.fakehash.ehr.csv"
     )
     assert expected_file.exists()
 

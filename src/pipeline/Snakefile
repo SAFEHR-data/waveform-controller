@@ -8,7 +8,6 @@ from locations import (
     WAVEFORM_ORIGINAL_CSV,
     WAVEFORM_SNAKEMAKE_LOGS,
     WAVEFORM_PSEUDONYMISED_PARQUET,
-    WAVEFORM_PSEUDONYMISED_EHR,
     HASH_LOOKUP_JSON,
     HASH_LOOKUP_JSON_REL,
     FILE_STEM_PATTERN,
@@ -144,7 +143,7 @@ rule ehr_lookup:
         # and reruns if the underlying data for this csn/day changes.
         pseudonymised_parquets = pseudonymised_parquet_files_for_date_and_hashed_csn
     output:
-        WAVEFORM_PSEUDONYMISED_EHR / (EHR_STEM_PATTERN_HASHED + "_ehr.csv")
+        WAVEFORM_PSEUDONYMISED_PARQUET / (EHR_STEM_PATTERN_HASHED + ".ehr.csv")
     log:
         WAVEFORM_SNAKEMAKE_LOGS / "ehr_lookup" / (EHR_STEM_PATTERN_HASHED + ".log")
     run:
