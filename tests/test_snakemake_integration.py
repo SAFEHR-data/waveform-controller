@@ -310,10 +310,7 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
     expected_file_counts = {"2025-01-01": 5, "2025-01-02": 1}
     _assert_date_partitioned_files(tmp_path / "original-csv", expected_file_counts)
     _assert_date_partitioned_files(tmp_path / "original-parquet", expected_file_counts)
-    # the pseudonymised files also include ehr files so expected file counts differ
-    _assert_date_partitioned_files(
-        tmp_path / "pseudonymised", {"2025-01-01": 7, "2025-01-02": 2}
-    )
+    _assert_date_partitioned_files(tmp_path / "pseudonymised", expected_file_counts)
     _assert_date_partitioned_files(
         tmp_path / "hash-lookups", {"2025-01-01": 1, "2025-01-02": 1}
     )
