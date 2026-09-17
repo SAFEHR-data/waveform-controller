@@ -149,12 +149,18 @@ rule ehr_lookup:
     run:
         logger = configure_file_logging(log[0])
         original_csn = hash_to_csn[wildcards.hashed_csn]
-        logger.info("Running EHR look up for csn %s. Hash -> %s. File -> %s", original_csn, wildcards.hashed_csn, output.ehr_output)
-        ehr_for_csn(
-            filename=output.ehr_output,
-            date_str=wildcards.date,
-            original_csn=original_csn,
-            hashed_csn=wildcards.hashed_csn)
+        ehr_file = Path(output.ehr_output)
+        logger.info("Running EHR look up for csn %s. Hash -> %s. File -> %s", original_csn, wildcards.hashed_csn, ehr_file)
+
+        if config_bool(config['EHR_LOOKUP_BYPASS']):
+            logger.warning("Bypassing EHR lookup and creating dummy file %s. In production this is an error.", ehr_file)
+            ehr_file.write_text("not a parquet...")
+        else:
+            ehr_for_csn(
+                filename=ehr_file,
+                date_str=wildcards.date,
+                original_csn=original_csn,
+                hashed_csn=wildcards.hashed_csn)
 
 
 rule daily_hash_lookup:
