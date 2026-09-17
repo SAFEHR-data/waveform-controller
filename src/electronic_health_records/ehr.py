@@ -51,7 +51,7 @@ def _ehr_for_csn(
     # will pick up the logger config defined in the snakemake job (ie. log to file)
     logger = logging.getLogger(__name__)
 
-    logger.info("Looking for airway data for %s.", hashed_csn)
+    logger.info("Looking for EHR data for %s.", hashed_csn)
 
     # When waveform data is grouped into days, it's always in UTC, so calculate the day
     # boundaries as UTC.
@@ -67,10 +67,12 @@ def _ehr_for_csn(
     airways = caboodle_connection.get_airway(
         utc_start_datetime, utc_end_datetime, original_csn
     )
+    logger.info("EHR data: airways: retrieved %s rows.", airways.shape[0])
 
     secretions = caboodle_connection.get_sputum_secretions(
         utc_start_datetime, utc_end_datetime, original_csn
     )
+    logger.info("EHR data: secretions: retrieved %s rows.", secretions.shape[0])
 
     # delete csn once we no longer need it
     del original_csn
@@ -79,10 +81,14 @@ def _ehr_for_csn(
     flowsheet_values = star_connection.get_flowsheets(
         utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
+    logger.info(
+        "EHR data: flowsheet_values: retrieved %s rows.", flowsheet_values.shape[0]
+    )
 
     lab_results = star_connection.get_lab_results(
         utc_start_datetime, utc_end_datetime, hospital_visit_id
     )
+    logger.info("EHR data: lab_results: retrieved %s rows.", lab_results.shape[0])
 
     ehr_data = pd.concat([airways, secretions, flowsheet_values, lab_results])
 
