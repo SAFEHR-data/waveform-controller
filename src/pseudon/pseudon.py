@@ -151,13 +151,22 @@ def csv_to_parquets(
         use_dictionary=True,
         write_statistics=True,
         write_page_index=True,
-        flavor="spark",
     )
     logger.info(
         "Done turning CSV %s to original parquet %s", csv_path, original_parquet_path
     )
 
-    df = pseudonymise_relevant_columns(df)
+    safe_columns = [
+        "sampling_rate",
+        "source_variable_id",
+        "source_channel_id",
+        "timestamp",
+        "units",
+        "numeric_values",
+        "string_values",
+    ]
+
+    df = pseudonymise_relevant_columns(df, safe_columns)
     pseudon_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
 
     # Use same metadata for pseudon, must not contain identifiers!
@@ -179,10 +188,52 @@ def csv_to_parquets(
         use_dictionary=True,
         write_statistics=True,
         write_page_index=True,
-        flavor="spark",
     )
     logger.info(
         "Done turning CSV %s to pseudonymised parquet %s", csv_path, hashed_path
+    )
+
+
+def write_ehr_parquet(df: pd.DataFrame, ehr_parquet_path: Path):
+    schema = pa.schema(
+        [
+            # for numeric types we match what's in the database, for better or worse
+            ("SecrDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("SecrSecretions", pa.string()),
+            ("SecrSputum", pa.string()),
+            ("SecrComments", pa.string()),
+            ("TubeEventId", pa.int64()),
+            ("TubeDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("TubePlacementInstant", pa.timestamp("us", tz="UTC")),
+            ("TubeRemovalInstant", pa.timestamp("us", tz="UTC")),
+            ("TubeType", pa.string()),
+            ("TubeSize", pa.string()),
+            # ("Repositioned", ),
+            # ("Position frequency", ),
+            ("FlowsheetDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("FlowsheetTemperature", pa.float64()),
+            ("FlowsheetNoradrenaline", pa.float64()),
+            ("FlowsheetMetaraminol", pa.float64()),
+            ("FlowsheetPaO2", pa.float64()),
+            ("FlowsheetPaCO2", pa.float64()),
+            ("FlowsheetUnits", pa.string()),
+            ("LabDateTimeRecorded", pa.timestamp("us", tz="UTC")),
+            ("LabUnits", pa.string()),
+            ("LabCRP", pa.float64()),
+            ("LabWCC", pa.float64()),
+        ]
+    )
+    ehr_table = pa.Table.from_pandas(df, schema=schema, preserve_index=True)
+    pq.write_table(
+        ehr_table,
+        str(ehr_parquet_path),
+        # valid values: {‘NONE’, ‘SNAPPY’, ‘GZIP’, ‘BROTLI’, ‘LZ4’, ‘ZSTD’}
+        compression="zstd",
+        use_dictionary=True,
+        write_statistics=True,
+        write_page_index=True,
+        # we do not use flavor="spark" here because that would
+        # use legacy INT96 timestamps which are timezone-naive.
     )
 
 
@@ -205,18 +256,7 @@ def add_waveform_metadata_to_table(
     return existing_table
 
 
-SAFE_COLUMNS = [
-    "sampling_rate",
-    "source_variable_id",
-    "source_channel_id",
-    "timestamp",
-    "units",
-    "numeric_values",
-    "string_values",
-]
-
-
-def pseudonymise_relevant_columns(df: pd.DataFrame):
+def pseudonymise_relevant_columns(df: pd.DataFrame, safe_columns: list[str]):
     """ "csn", "mrn", "location" are examples of columns that must be pseudonymised.
 
     However, it's safer to list which columns *don't* need to be pseudonymised. Eg. you
@@ -226,6 +266,6 @@ def pseudonymise_relevant_columns(df: pd.DataFrame):
     hashed.
     """
     for col in df.columns:
-        if col not in SAFE_COLUMNS:
+        if col not in safe_columns:
             df[col] = df[col].apply(functools.partial(do_hash, col))
     return df

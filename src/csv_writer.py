@@ -2,10 +2,15 @@
 
 import csv
 import json
+
 from datetime import datetime
 from typing import Optional
 
-from locations import WAVEFORM_ORIGINAL_CSV, make_file_name, FILE_STEM_PATTERN
+from locations import (
+    WAVEFORM_ORIGINAL_CSV,
+    make_file_name,
+    FILE_STEM_PATTERN,
+)
 
 
 def create_file_name(
@@ -76,7 +81,6 @@ def write_frame(
         wv_writer = csv.writer(
             fileout, delimiter=",", quoting=csv.QUOTE_ALL, lineterminator="\n"
         )
-
         # Encode value lists as JSON so parquet conversion can use json.loads
         # (Python list repr breaks on commas / quotes in string values).
         row_array = [

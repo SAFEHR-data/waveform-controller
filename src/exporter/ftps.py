@@ -6,7 +6,11 @@ from tempfile import NamedTemporaryFile
 from time import perf_counter
 from typing import Any
 
-from core.uploader._ftps import _connect_to_ftp, _create_and_set_as_cwd_multi_path
+from core.uploader._ftps import (
+    _connect_to_ftp,
+    _create_and_set_as_cwd_multi_path,
+    ImplicitFtpTls,
+)
 
 import settings
 import telemetry
@@ -103,6 +107,7 @@ def do_upload_multiple(
             settings.FTPS_PORT,
             settings.FTPS_USERNAME,
             settings.FTPS_PASSWORD,
+            ImplicitFtpTls,
         )
         _create_and_set_as_cwd_multi_path(ftp, remote_project_dir)
         command = f"STOR {remote_tar_filename}"
