@@ -18,7 +18,7 @@ LEFT JOIN {schema_name}.lab_order AS o
     ON r.lab_order_id = o.lab_order_id
 
 WHERE 
-    r.result_status LIKE 'FINAL'
+    r.result_status = 'FINAL'
     AND r.lab_test_definition_id IN ('1001', '686')
     AND r.result_last_modified_datetime >= %(start_datetime)s
     AND r.result_last_modified_datetime < %(end_datetime)s
