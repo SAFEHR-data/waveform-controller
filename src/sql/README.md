@@ -35,11 +35,5 @@ The ultimate aim is to have one csv per patient per day which looks roughly like
 | lab_results.sql | csn/today/yesterday | part of the table above | waveform-controller/src/sql | star |
 | sputum_secretions.sql | csn/today/yesterday | part of the table above | waveform-private-queries/src/sql | caboodle |
 | reposition.sql | csn/today/yesterday | part of the table above | waveform-private-queries/src/sql | caboodle |
----
-
-## Unfinished scripts
-
-| script | arguments | record | location of script in repo | database | 
-|- | --- | --- |- | --- |
 | airway.sql | csn/today/yesterday | part of the table above | waveform-private-queries/src/sql | caboodle |
 ---

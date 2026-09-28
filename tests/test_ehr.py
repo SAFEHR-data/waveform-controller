@@ -133,7 +133,7 @@ def patch_mock_get_rows(monkeypatch):
                     None,
                     "mL",
                 ),
-                # Temperature (why no units?)
+                # Temperature (real data does not specify units)
                 (
                     datetime(
                         2026, 9, 14, 2, 5, tzinfo=timezone(timedelta(seconds=3600))
