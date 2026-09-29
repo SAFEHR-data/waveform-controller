@@ -3,6 +3,7 @@
 # code as part of its build process, but for now it's just copied
 # and modified
 import json
+from datetime import datetime, timezone
 
 
 class WaveformBaseMessage:
@@ -29,9 +30,11 @@ class WaveformBaseMessage:
 
         return message_cls(data)
 
-    def get_observation_time(self):
+    def get_observation_time(self) -> datetime:
         """Time of the observation."""
-        return self.data["observationTime"]
+        # Message time is epoch seconds, so convert to a Python timestamp
+        timestamp_epoch_seconds = self.data["observationTime"]
+        return datetime.fromtimestamp(timestamp_epoch_seconds, tz=timezone.utc)
 
     def get_source_location_string(self):
         """Location string according to the original data source."""

@@ -1,9 +1,13 @@
+from datetime import datetime
 from pathlib import Path
+from typing import Tuple, Optional
 
 from pyarrow import parquet as pq
 
 
-def parquet_min_max_value(parquet_path: Path, column_name):
+def parquet_min_max_value(
+    parquet_path: Path, column_name
+) -> Tuple[Optional[datetime], Optional[datetime]]:
     """By the magic of parquet files we can get the min/max timestamps without loading
     it all into memory or even reading every row."""
     parquet_file = pq.ParquetFile(parquet_path)

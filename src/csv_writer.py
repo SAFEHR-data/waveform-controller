@@ -42,7 +42,7 @@ def write_frame(
     string_values: Optional[list[str]] = None,
     source_variable_id: str,
     source_channel_id: Optional[str] = None,
-    observation_timestamp: float,
+    observation_datetime: datetime,
     units: str,
     sampling_rate: Optional[int] = None,
     mapped_location_string: str,
@@ -59,7 +59,6 @@ def write_frame(
         raise ValueError(
             "Exactly ONE of string_values, numeric_values must be not None"
         )
-    observation_datetime = datetime.fromtimestamp(observation_timestamp)
 
     filename = WAVEFORM_ORIGINAL_CSV / create_file_name(
         source_variable_id, source_channel_id, observation_datetime, csn, units
@@ -90,7 +89,7 @@ def write_frame(
             source_channel_id if source_channel_id is not None else "",
             units,
             sampling_rate if sampling_rate is not None else "",
-            observation_timestamp,
+            observation_datetime.isoformat(),
             mapped_location_string,
             json.dumps(numeric_values) if numeric_values is not None else "",
             json.dumps(string_values) if string_values is not None else "",
