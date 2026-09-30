@@ -124,6 +124,10 @@ class starDB:
                 with db_connection.cursor() as curs:
                     curs.execute(sql_query, parameters)
                     rows = curs.fetchall()
+                    # Some versions of type stubs/mypy require this check,
+                    # since .description can be None for some operations, but
+                    # we did a SELECT so we know it isn't
+                    assert curs.description is not None
                     col_names = [col.name for col in curs.description]
                 self.connection_pool.putconn(db_connection)
         except psycopg2.errors.OperationalError as e:
