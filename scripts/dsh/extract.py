@@ -40,15 +40,24 @@ def main(args):
     # Tar file names contain ISO datetime strings so will sort in the order they were uploaded.
     # By design, extracted files that appear in later uploads can overwrite those from earlier uploads if the paths match.
     ordered_tar_files = sorted(incoming_full_path.glob("*.tar"))
-    logger.info(f"Found {len(ordered_tar_files)} tar files in {incoming_full_path}.")
+    logger.info(f"Found {len(ordered_tar_files)} tar files in {incoming_full_path}")
     dry_run_marker = "[DRY RUN] " if args.dry_run else ""
     for tar_to_extract in ordered_tar_files:
         logger.info(
             f"{dry_run_marker}Extracting tar file ({tar_to_extract.stat().st_size:,} bytes) {tar_to_extract}"
         )
         if not args.interactive or "y" == input("Extract? "):
-            if not args.dry_run:
-                with tarfile.TarFile(tar_to_extract, mode="r") as tar_obj:
+            with tarfile.TarFile(tar_to_extract, mode="r") as tar_obj:
+                all_members = sorted(
+                    tar_obj.getmembers(), key=lambda member: member.name
+                )
+                for tar_member in all_members:
+                    logger.info(
+                        "    file [%s bytes]: %s",
+                        "{: 12,}".format(tar_member.size),
+                        tar_member.name,
+                    )
+                if not args.dry_run:
                     tar_obj.extractall(path=extraction_output_full_path)
             if not args.no_delete:
                 if not args.dry_run:
