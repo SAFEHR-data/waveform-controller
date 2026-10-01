@@ -153,7 +153,7 @@ class WaveformController:
 
         try:
             location_string = message.get_mapped_location_string()
-            observation_timestamp = message.get_observation_time()
+            observation_datetime = message.get_observation_time()
             source_variable_id = message.get_source_variable_id()
             units = message.get_unit()
             mapped_location_string = message.get_mapped_location_string()
@@ -206,14 +206,14 @@ class WaveformController:
         lookup_success = True
         try:
             matched_mrn = self.emap_db.get_matched_mrn(
-                location_string, observation_timestamp
+                location_string, observation_datetime
             )
         except ValueError:
             lookup_success = False
             logger.error(
                 "Ambiguous or non existent match for location %s, obs time %s",
                 location_string,
-                observation_timestamp,
+                observation_datetime,
                 exc_info=True,
             )
             matched_mrn = ("unmatched_mrn", "unmatched_nhs", "unmatched_csn", False)
@@ -230,7 +230,7 @@ class WaveformController:
             source_variable_id=source_variable_id,
             source_channel_id=source_channel_id,
             sampling_rate=sampling_rate,
-            observation_datetime=observation_timestamp,
+            observation_datetime=observation_datetime,
             units=units,
             mapped_location_string=mapped_location_string,
             csn=csn,
