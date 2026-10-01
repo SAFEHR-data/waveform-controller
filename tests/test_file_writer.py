@@ -86,7 +86,7 @@ def test_create_csv_low_freq(
             csn=csn,
             mrn=mrn,
         )
-        expected_line = f'"12345678","whatever","{variable_id}","","{u}","","2025-01-01T10:10:10+00:00","mapped loc","{expected_v_num}","{expected_v_str}"\n'
+        expected_line = f'"12345678","whatever","{variable_id}","","{u}","","2025-01-01T10:10:10.000000+00:00","mapped loc","{expected_v_num}","{expected_v_str}"\n'
         expected_texts[u] += expected_line
     # need to check multiple files for multiple units
     for idx, ef in enumerate(expected_filenames):
@@ -130,7 +130,7 @@ def test_create_csv_high_freq(
 
     expected_text = (
         'csn,mrn,source_variable_id,source_channel_id,units,sampling_rate,timestamp,location,numeric_values,string_values\n'
-        f'"12345678","whatever","{variable_id}","{channel_id or ""}","{units}","50","2025-01-01T10:10:10+00:00","mapped loc","[1, 2, 3.0]",""\n'
+        f'"12345678","whatever","{variable_id}","{channel_id or ""}","{units}","50","2025-01-01T10:10:10.000000+00:00","mapped loc","[1, 2, 3.0]",""\n'
     )
     _check_written_csv(expected_filename, expected_text)
 
