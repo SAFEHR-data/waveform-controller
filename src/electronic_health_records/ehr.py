@@ -74,6 +74,11 @@ def _ehr_for_csn(
     )
     logger.info("EHR data: secretions: retrieved %s rows.", secretions.shape[0])
 
+    repositioning = caboodle_connection.get_repositioning(
+        utc_start_datetime, utc_end_datetime, original_csn
+    )
+    logger.info("EHR data: repositioning: retrieved %s rows.", repositioning.shape[0])
+
     # delete csn once we no longer need it
     del original_csn
 
@@ -90,7 +95,9 @@ def _ehr_for_csn(
     )
     logger.info("EHR data: lab_results: retrieved %s rows.", lab_results.shape[0])
 
-    ehr_data = pd.concat([airways, secretions, flowsheet_values, lab_results])
+    ehr_data = pd.concat(
+        [airways, secretions, repositioning, flowsheet_values, lab_results]
+    )
 
     # we can pseudonymise to safe, although at the moment all columns
     # are considered safe
@@ -107,8 +114,9 @@ def _ehr_for_csn(
         # Free text comments could in principle contain sensitive information but
         # we have assessed this particular column to be low risk
         "SecrComments",
-        "Repositioned",
-        "Position frequency",
+        "RepositioningDateTimeRecorded",
+        "RepositioningRepositioned",
+        "RepositioningPositionFrequency",
         "FlowsheetDateTimeRecorded",
         "FlowsheetTemperature",
         "FlowsheetNoradrenaline",

@@ -81,6 +81,25 @@ def patch_mock_get_rows(monkeypatch):
                 ),
             ]
             return rows, col_names
+        elif query == get_sql_query_text("private/reposition.sql"):
+            col_names = [
+                "RepositioningDateTimeRecorded",
+                "RepositioningRepositioned",
+                "RepositioningPositionFrequency",
+            ]
+            rows = [
+                (
+                    datetime(2026, 9, 14, 3, 30),
+                    "Turns self",
+                    None,
+                ),
+                (
+                    datetime(2026, 11, 14, 3, 31),
+                    None,
+                    "3 hourly",
+                ),
+            ]
+            return rows, col_names
         else:
             raise ValueError(f"Caboodle query not recognised: {query}")
 
@@ -165,6 +184,9 @@ def patch_mock_get_rows(monkeypatch):
 
 
 def test_ehr(monkeypatch, tmp_path):
+    mock_do_hash = Mock(return_value="unwanted_hash")
+    monkeypatch.setattr("pseudon.hashing.do_hash", mock_do_hash)
+    monkeypatch.setattr("pseudon.pseudon.do_hash", mock_do_hash)
     fake_abs_root = tmp_path.absolute()
     orig_csn = "SECRET1234"
     hashed_csn = "fakehash"
@@ -190,15 +212,22 @@ def test_ehr(monkeypatch, tmp_path):
         / "2026-09-14.fakehash.ehr.parquet"
     )
     assert not expected_file.exists()
+    # ACT
     ehr_for_csn(
         expected_file, date_str=date_str, original_csn=orig_csn, hashed_csn=hashed_csn
     )
+
+    # ASSERT
+
+    # The EHR data should not require any extra pseudonymisation, so no hashing is expected.
+    # If it does, maybe you forgot to add a column to the allow list?
+    mock_do_hash.assert_not_called()
 
     # just check the file contains something for now (it will be changing to parquet)
     assert expected_file.exists()
 
     ehr_data = pq.read_table(expected_file)
-    assert ehr_data.num_rows == 8
+    assert ehr_data.num_rows == 10
     df = ehr_data.to_pandas(
         # in particular, stop ints from being loaded as floats if there are null values in the column
         types_mapper=pd.ArrowDtype
@@ -263,6 +292,33 @@ def test_ehr(monkeypatch, tmp_path):
                 ),
             ],
             columns=actual_tube_events.columns,
+        ),
+        check_dtype=False,
+    )
+
+    actual_repositioning = df[df["RepositioningDateTimeRecorded"].notna()][
+        [
+            "RepositioningDateTimeRecorded",
+            "RepositioningRepositioned",
+            "RepositioningPositionFrequency",
+        ]
+    ].reset_index(drop=True)
+    pd.testing.assert_frame_equal(
+        actual_repositioning,
+        pd.DataFrame(
+            [
+                (
+                    datetime(2026, 9, 14, 2, 30, tzinfo=timezone.utc),
+                    "Turns self",
+                    None,
+                ),
+                (
+                    datetime(2026, 11, 14, 3, 31, tzinfo=timezone.utc),
+                    None,
+                    "3 hourly",
+                ),
+            ],
+            columns=actual_repositioning.columns,
         ),
         check_dtype=False,
     )
