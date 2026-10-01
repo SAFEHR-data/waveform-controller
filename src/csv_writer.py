@@ -89,7 +89,7 @@ def write_frame(
             source_channel_id if source_channel_id is not None else "",
             units,
             sampling_rate if sampling_rate is not None else "",
-            observation_datetime.isoformat(),
+            observation_datetime.isoformat(timespec="microseconds"),
             mapped_location_string,
             json.dumps(numeric_values) if numeric_values is not None else "",
             json.dumps(string_values) if string_values is not None else "",
