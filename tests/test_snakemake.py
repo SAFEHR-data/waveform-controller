@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -48,10 +49,26 @@ def _make_test_input_csv(csv_dir: Path):
             4,
         )
     )
-    # two files from 2 days ago
+
+    # from two days ago
     files.append(
         TestFileDescription(
             (today - timedelta(days=2)).isoformat(),
+            1735740783.0,
+            "SECRET_CSN_1235",
+            "SECRET_MRN_12346",
+            "SECRET_LOCATION_123",
+            "27",
+            "noCh",
+            50,
+            "uV",
+            4,
+        )
+    )
+    # two files from 3 days ago
+    files.append(
+        TestFileDescription(
+            (today - timedelta(days=3)).isoformat(),
             1735801965.0,
             "SECRET_CSN_1234",
             "SECRET_MRN_12345",
@@ -65,7 +82,7 @@ def _make_test_input_csv(csv_dir: Path):
     )
     files.append(
         TestFileDescription(
-            (today - timedelta(days=2)).isoformat(),
+            (today - timedelta(days=3)).isoformat(),
             1735801965.0,
             "SECRET_CSN_1234",
             "SECRET_MRN_12345",
@@ -88,33 +105,44 @@ def _make_test_input_csv(csv_dir: Path):
     return [f.get_orig_csv() for f in files]
 
 
+# Perhaps a relative date *range* will ultimately be what we need (eg. 7 to 2 days ago),
+# but let's test it as it stands for now.
 @pytest.mark.parametrize(
-    "process_only_yesterday, process_datestring, expected_file_indexes",
+    "process_only_n_days_ago, process_date_regex, expected_file_indexes",
     [
-        # with process only yesterday true we should return only the single file from yesterday
-        (True, "", [1]),
-        # process only yesterday overrides process_datestring
+        # with process only n days ago we should return only the file from N days ago
+        (1, None, [1]),
+        (2, None, [2]),
+        # process only n days ago overrides regex
         (
-            True,
-            (datetime.now(tz=timezone.utc).date() - timedelta(days=2)).isoformat(),
-            [1],
+            2,
+            (datetime.now(tz=timezone.utc).date() - timedelta(days=3)).isoformat(),
+            [2],
         ),
-        # with process only yesterday false and an empty process_datestring we should return all 4 files.
-        (False, "", [0, 1, 2, 3]),
-        # with process only yesterday false and process_datestring set to two days ago we should return the two files from two days ago
+        # with process only n days None and an empty process_datestring we should return all 4 files.
+        (None, None, [0, 1, 2, 3, 4]),
+        # empty regex would also work but is not really a requirement
+        (None, "", [0, 1, 2, 3, 4]),
+        # catchall regex
+        (None, ".", [0, 1, 2, 3, 4]),
+        # dates tend to have a 2 in them
+        (None, "2", [0, 1, 2, 3, 4]),
+        # but never a Z
+        (None, "Z", []),
+        # with process only n days None and regex set to three days ago we should return the two files from three days ago
         (
-            False,
-            (datetime.now(tz=timezone.utc).date() - timedelta(days=2)).isoformat(),
-            [2, 3],
+            None,
+            (datetime.now(tz=timezone.utc).date() - timedelta(days=3)).isoformat(),
+            [3, 4],
         ),
     ],
 )
 def test_determine_eventual_outputs(
     tmp_path: Path,
     monkeypatch,
-    process_only_yesterday,
-    process_datestring,
-    expected_file_indexes,
+    process_only_n_days_ago: int,
+    process_date_regex: str,
+    expected_file_indexes: list[int],
 ):
     original_csv_dir = tmp_path / locations.WAVEFORM_ORIGINAL_CSV.relative_to("/")
     expected_paths = _make_test_input_csv(original_csv_dir)
@@ -125,8 +153,89 @@ def test_determine_eventual_outputs(
     csv_wait_time = timedelta(0)
 
     files, hash_to_csn = utils.determine_eventual_outputs(
-        csv_wait_time, process_only_yesterday, process_datestring
+        csv_wait_time, process_only_n_days_ago, process_date_regex
     )
     assert {
         str(f.get_original_csv_path().relative_to(original_csv_dir)) for f in files
     } == {expected_paths[ex_i] for ex_i in expected_file_indexes}
+
+
+# Snakemake config type coercion methods. Snakemake has already done some
+# conversion from env var by the time we get to see it, so this is not testing the whole config pipeline.
+# We could possibly move to yaml config files and avoid some of this.
+@pytest.mark.parametrize(
+    ["value", "expected_output"],
+    [
+        ["", False],
+        [" ", False],
+        ["0", False],
+        [" 0 ", False],
+        [0, False],
+        [1, True],
+        [2, ValueError],
+        ["1", True],
+        ["2", ValueError],
+        [True, True],
+        [False, False],
+    ],
+)
+def test_config_bool(value, expected_output: bool | type[Exception]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            utils.config_bool(value)
+    else:
+        actual_val = utils.config_bool(value)
+        assert actual_val is expected_output
+
+
+@pytest.mark.parametrize(
+    ["value", "expected_output"],
+    [
+        ["", None],
+        [" ", None],
+        [None, None],
+        ["0", 0],
+        [" 0 ", 0],
+        [-1, -1],
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        ["1", 1],
+        ["-2", -2],
+        ["cheese", ValueError],
+        [1.0, ValueError],
+        [True, ValueError],
+        [False, ValueError],
+    ],
+)
+def test_config_int(value, expected_output: Optional[int] | type[Exception]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            utils.config_int(value)
+    else:
+        actual_val = utils.config_int(value)
+        assert actual_val is None or isinstance(actual_val, int)
+        assert actual_val == expected_output
+
+
+@pytest.mark.parametrize(
+    ["value", "expected_output"],
+    [
+        ["", ""],
+        [" ", ""],
+        [None, None],
+        [" 0 ", "0"],
+        [1.1, "1.1"],
+        [-2, "-2"],
+        ["  cheese ", "cheese"],
+        [True, "True"],
+    ],
+)
+def test_config_str(value, expected_output: Optional[str] | type[Exception]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            utils.config_str(value)
+    else:
+        actual_val = utils.config_str(value)
+        assert actual_val is None or isinstance(actual_val, str)
+        assert actual_val == expected_output

@@ -17,7 +17,7 @@ from locations import (
     ALL_UPLOADED_JSON,
     ALL_FTPS_LOG, EHR_STEM_PATTERN_HASHED,
 )
-from pipeline.utils import config_bool, determine_eventual_outputs, timestamp_for_paths
+from pipeline.utils import config_bool, determine_eventual_outputs, timestamp_for_paths, config_int, config_str
 from pseudon.pseudon import csv_to_parquets
 from electronic_health_records.ehr import ehr_for_csn
 
@@ -32,12 +32,12 @@ from electronic_health_records.ehr import ehr_for_csn
 # so being very cautious here may not be necessary.
 CSV_AGE_THRESHOLD_MINUTES = timedelta(minutes=float(config['CSV_AGE_THRESHOLD_MINUTES']))
 
-# To prevent Snakemake picking up old files in production, we can set a flag to to only
-# use files with a date prefix matching yesterday's date. Defaults to True
-ONLY_USE_CSV_FROM_YESTERDAY = config_bool(config['ONLY_USE_CSV_FROM_YESTERDAY'])
+# To prevent Snakemake picking up old files in production, we can set a flag to only
+# use files with a date prefix matching a certain date.
+ONLY_USE_CSV_FROM_N_DAYS_AGO = config_int(config['ONLY_USE_CSV_FROM_N_DAYS_AGO'])
 
 # We can optionally select a single date to process or a regular expression to match multiple dates.
-PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
+PROCESS_CSV_FROM_DATE = config_str(config['PROCESS_CSV_FROM_DATE'])
 
 # The problem here is that snakemake works "backwards" in that you have to define which
 # files you want to be produced, yet we don't know what output files we need until the
@@ -45,7 +45,7 @@ PROCESS_CSV_FROM_DATE = str(config['PROCESS_CSV_FROM_DATE'])
 # Therefore, look at the input files and work out the eventual output files so they can
 # be fed into snakemake.
 
-all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_YESTERDAY, PROCESS_CSV_FROM_DATE)
+all_outputs, hash_to_csn = determine_eventual_outputs(CSV_AGE_THRESHOLD_MINUTES, ONLY_USE_CSV_FROM_N_DAYS_AGO, PROCESS_CSV_FROM_DATE)
 ALL_FTPS_UPLOADED = sorted({ao.get_ftps_uploaded_all_file() for ao in all_outputs})
 ALL_DAILY_HASH_LOOKUPS = sorted({ao.get_daily_hash_lookup() for ao in all_outputs})
 ALL_EHR_LOOKUPS = sorted({ao.get_ehr_lookup() for ao in all_outputs})

@@ -193,7 +193,7 @@ Filtering by variable is not currently possible.
 
 Variables you may wish to modify:
 ```
-ONLY_USE_CSV_FROM_YESTERDAY=FALSE
+ONLY_USE_CSV_FROM_N_DAYS_AGO=2
 # something shorter than the standard 180 may be needed if you only just processed the data
 CSV_AGE_THRESHOLD_MINUTES=???
 # use actual date you want to process

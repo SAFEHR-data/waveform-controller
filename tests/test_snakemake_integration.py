@@ -383,7 +383,7 @@ def _run_snakemake(tmp_path):
         "SNAKEMAKE_CORES=1\n"
         "INSTANCE_NAME=pytest\n"
         "CSV_AGE_THRESHOLD_MINUTES=5\n"
-        "ONLY_USE_CSV_FROM_YESTERDAY=False\n"
+        "ONLY_USE_CSV_FROM_N_DAYS_AGO=\n"
         "PROCESS_CSV_FROM_DATE=\n"
         "SCHEMA_NAME=\n"  # in testing mode, value doesn't matter but it has to exist
     )
