@@ -140,6 +140,9 @@ class FakeLFData(FakeData):
         return expected
 
 
+DbStatus = Literal["ok", "no_connect", "wrong_number_rows"]
+
+
 @pytest.mark.parametrize(
     # only affect LF tests so is redundant for HF (which is always numeric)
     # "both" is a form of bad data which we should reject
@@ -154,10 +157,7 @@ class FakeLFData(FakeData):
     "opt_out",
     [True, False],
 )
-@pytest.mark.parametrize(
-    "db_connect_failure",
-    [True, False],
-)
+@pytest.mark.parametrize("db_status", ["ok", "no_connect", "wrong_number_rows"])
 @pytest.mark.parametrize(
     "bad_data_type",
     # 0 is not bad data, 1,2,3 are various different kinds of bad data
@@ -168,18 +168,20 @@ def test_controller_callback(
     lf_value_type,
     fake_data_class,
     opt_out,
-    db_connect_failure,
+    db_status: DbStatus,
     bad_data_type,
-):
+) -> None:
     # Certain combinations of test just don't make sense
     if fake_data_class == FakeHFData and lf_value_type != "numeric":
         pytest.skip()
 
     emap_db_mock = Mock()
-    if db_connect_failure:
+    if db_status == "no_connect":
         emap_db_mock.get_matched_mrn.side_effect = ConnectionError(
             "mock database error"
         )
+    elif db_status == "wrong_number_rows":
+        emap_db_mock.get_matched_mrn.side_effect = ValueError()
     else:
         emap_db_mock.get_matched_mrn.return_value = ("mrn", "nhsno", "csn", opt_out)
     monkeypatch.setattr("controller.db_pg.starDB", Mock(return_value=emap_db_mock))
@@ -223,10 +225,22 @@ def test_controller_callback(
         emap_db_mock.get_matched_mrn.assert_not_called()
         channel_mock.basic_reject.assert_called_once_with(delivery_tag, False)
         channel_mock.basic_ack.assert_not_called()
-    elif db_connect_failure:
+    elif db_status == "no_connect":
         # if the DB lookup failed, we should not write anything and requeue the message
         write_frame_mock.assert_not_called()
         channel_mock.basic_reject.assert_called_once_with(delivery_tag, True)
+        channel_mock.basic_ack.assert_not_called()
+    elif db_status == "wrong_number_rows":
+        # if the DB lookup return != 1 row, we still expect to write the data,
+        # but with unknown csn, mrn
+        expected_write_frame_kwargs = fake_data_obj.get_expected_write_frame_kwargs()
+        expected_write_frame_kwargs.update(
+            csn="unmatched_csn",
+            mrn="unmatched_mrn",
+        )
+        write_frame_mock.assert_called_once_with(**expected_write_frame_kwargs)
+        # we assume this to be a non-transient error, so reject without requeue
+        channel_mock.basic_reject.assert_called_once_with(delivery_tag, False)
         channel_mock.basic_ack.assert_not_called()
     elif opt_out:
         # patient has opted out, dump the message
