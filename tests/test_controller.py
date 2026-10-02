@@ -1,6 +1,6 @@
 import copy
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 from unittest.mock import Mock
 
@@ -18,6 +18,12 @@ class FakeData:
         self.fake_data = FakeData._base_fake_data()
         self.value_type: Literal["numeric", "string", "both"] = value_type
 
+    # comes in as POSIX timestamp, out as Python datetime
+    fake_timestamp_io = [
+        1790614413.9698,
+        datetime(2026, 9, 28, 16, 53, 33, 969800, tzinfo=timezone.utc),
+    ]
+
     @staticmethod
     def _base_fake_data() -> dict:
         return {
@@ -27,7 +33,7 @@ class FakeData:
             "sourceObservationType": "waveform",
             "mappedVariableDescription": "P0.1 Occlusion Pressure",
             "mappedLocationString": "loc",
-            "observationTime": datetime.now().timestamp(),
+            "observationTime": FakeData.fake_timestamp_io[0],
             "sourceVariableId": "27",
             "unit": "uV",
         }
@@ -57,7 +63,7 @@ class FakeHFData(FakeData):
             "string_values": None,  # HF is always numeric
             "source_variable_id": fd["sourceVariableId"],
             "source_channel_id": fd["sourceChannelId"],
-            "observation_timestamp": fd["observationTime"],
+            "observation_datetime": FakeData.fake_timestamp_io[1],
             "units": fd["unit"],
             "sampling_rate": fd["samplingRate"],
             "mapped_location_string": fd["mappedLocationString"],
@@ -116,7 +122,7 @@ class FakeLFData(FakeData):
         expected = {
             "source_variable_id": fd["sourceVariableId"],
             "source_channel_id": None,
-            "observation_timestamp": fd["observationTime"],
+            "observation_datetime": FakeData.fake_timestamp_io[1],
             "units": fd["unit"],
             "sampling_rate": None,
             "mapped_location_string": fd["mappedLocationString"],

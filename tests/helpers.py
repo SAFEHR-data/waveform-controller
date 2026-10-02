@@ -13,6 +13,7 @@ ValueKind = Literal["numeric", "string"]
 class TestFileDescription:
     __test__ = False
     date: str
+    # use POSIX timestamps because the arithmetic is a bit easier
     start_timestamp: float
     csn: str
     mrn: str

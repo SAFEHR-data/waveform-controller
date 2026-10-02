@@ -2,6 +2,7 @@ import json
 import os
 import re
 import shutil
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pyarrow as pa
@@ -75,6 +76,10 @@ def _numeric_rows_as_written(numeric_rows: list) -> list:
     return result
 
 
+def _posix_to_datetime_utc(posix_time: float) -> datetime:
+    return datetime.fromtimestamp(posix_time, tz=timezone.utc)
+
+
 def _make_test_input_csv(
     monkeypatch, tmp_path, t: TestFileDescription
 ) -> tuple[list, list]:
@@ -93,6 +98,7 @@ def _make_test_input_csv(
     source_channel_id = None if t.channel_id == "noCh" else t.channel_id
     row_time = t.start_timestamp
     for numeric_values, string_values in zip(numeric_rows, string_rows):
+        row_time_dt = _posix_to_datetime_utc(row_time)
         csv_writer.write_frame(
             numeric_values=(
                 [float(v) for v in numeric_values]
@@ -102,7 +108,7 @@ def _make_test_input_csv(
             string_values=string_values,
             source_variable_id=t.variable_id,
             source_channel_id=source_channel_id,
-            observation_timestamp=row_time,
+            observation_datetime=row_time_dt,
             units=t.units,
             sampling_rate=t.sampling_rate,
             mapped_location_string=t.location,
@@ -248,28 +254,34 @@ def test_snakemake_pipeline(tmp_path: Path, background_hasher, monkeypatch):
             {
                 "csn": file1.csn,
                 "hashed_csn": file1.get_hashed_csn(),
-                "min_timestamp": file2.start_timestamp,
-                "max_timestamp": (
+                "min_timestamp": _posix_to_datetime_utc(
+                    file2.start_timestamp
+                ).isoformat(),
+                "max_timestamp": _posix_to_datetime_utc(
                     file1.start_timestamp + file1.num_rows - 1
-                ),  # one sec per row
+                ).isoformat(),  # one sec per row
             },
             {
                 "csn": file3.csn,
                 "hashed_csn": file3.get_hashed_csn(),
-                "min_timestamp": file3.start_timestamp,
-                "max_timestamp": (
+                "min_timestamp": _posix_to_datetime_utc(
+                    file3.start_timestamp
+                ).isoformat(),
+                "max_timestamp": _posix_to_datetime_utc(
                     file3.start_timestamp + file3.num_rows - 1
-                ),  # one sec per row
+                ).isoformat(),  # one sec per row
             },
         ],
         "2025-01-02": [
             {
                 "csn": file4.csn,
                 "hashed_csn": file4.get_hashed_csn(),
-                "min_timestamp": file4.start_timestamp,
-                "max_timestamp": (
+                "min_timestamp": _posix_to_datetime_utc(
+                    file4.start_timestamp
+                ).isoformat(),
+                "max_timestamp": _posix_to_datetime_utc(
                     file4.start_timestamp + file4.num_rows - 1
-                ),  # one sec per row
+                ).isoformat(),  # one sec per row
             }
         ],
     }

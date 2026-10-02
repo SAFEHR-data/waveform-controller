@@ -99,14 +99,15 @@ def csv_to_parquets(
             "source_channel_id": str,
             "units": str,
             "sampling_rate": "Int32",
-            "timestamp": float,
+            "timestamp": str,
             "location": str,
             "numeric_values": str,
             "string_values": str,
         },
         header=0,  # the first line is always the header
     )
-
+    # go from ISO str to pandas timestamp
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df["numeric_values"] = df["numeric_values"].apply(parse_numeric_values)
     df["string_values"] = df["string_values"].apply(parse_string_values)
 
@@ -122,7 +123,7 @@ def csv_to_parquets(
             ("source_channel_id", pa.string()),
             ("units", pa.string()),
             ("sampling_rate", pa.int32()),
-            ("timestamp", pa.float64()),
+            ("timestamp", pa.timestamp("us", tz="UTC")),
             ("location", pa.string()),
             # As per requirements, compactness is important here.
             # decimal32 can have a maximum of 9 significant digits and should

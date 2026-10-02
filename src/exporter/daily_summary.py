@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from exporter.parquet import parquet_min_max_value
 
@@ -41,6 +42,11 @@ def make_daily_hash_summary(daily_files, out_json_file):
 
     hash_summary = list(hash_summary_by_csn.values())
 
+    def json_serialise(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        raise TypeError(f"Type {type(obj)} not serializable")
+
     with open(out_json_file, "w") as fh:
-        json.dump(hash_summary, fh, indent=0)
+        json.dump(hash_summary, fh, indent=0, default=json_serialise)
     logger.info(f"Wrote {len(hash_summary)} entries to {out_json_file}")
