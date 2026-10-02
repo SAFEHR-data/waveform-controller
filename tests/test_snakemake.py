@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -157,3 +158,84 @@ def test_determine_eventual_outputs(
     assert {
         str(f.get_original_csv_path().relative_to(original_csv_dir)) for f in files
     } == {expected_paths[ex_i] for ex_i in expected_file_indexes}
+
+
+# Snakemake config type coercion methods. Snakemake has already done some
+# conversion from env var by the time we get to see it, so this is not testing the whole config pipeline.
+# We could possibly move to yaml config files and avoid some of this.
+@pytest.mark.parametrize(
+    ["value", "expected_output"],
+    [
+        ["", False],
+        [" ", False],
+        ["0", False],
+        [" 0 ", False],
+        [0, False],
+        [1, True],
+        [2, ValueError],
+        ["1", True],
+        ["2", ValueError],
+        [True, True],
+        [False, False],
+    ],
+)
+def test_config_bool(value, expected_output: bool | type[Exception]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            utils.config_bool(value)
+    else:
+        actual_val = utils.config_bool(value)
+        assert actual_val is expected_output
+
+
+@pytest.mark.parametrize(
+    ["value", "expected_output"],
+    [
+        ["", None],
+        [" ", None],
+        [None, None],
+        ["0", 0],
+        [" 0 ", 0],
+        [-1, -1],
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        ["1", 1],
+        ["-2", -2],
+        ["cheese", ValueError],
+        [1.0, ValueError],
+        [True, ValueError],
+        [False, ValueError],
+    ],
+)
+def test_config_int(value, expected_output: Optional[int] | type[Exception]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            utils.config_int(value)
+    else:
+        actual_val = utils.config_int(value)
+        assert actual_val is None or isinstance(actual_val, int)
+        assert actual_val == expected_output
+
+
+@pytest.mark.parametrize(
+    ["value", "expected_output"],
+    [
+        ["", ""],
+        [" ", ""],
+        [None, None],
+        [" 0 ", "0"],
+        [1.1, "1.1"],
+        [-2, "-2"],
+        ["  cheese ", "cheese"],
+        [True, "True"],
+    ],
+)
+def test_config_str(value, expected_output: Optional[str] | type[Exception]):
+    if isinstance(expected_output, type):
+        with pytest.raises(expected_output):
+            utils.config_str(value)
+    else:
+        actual_val = utils.config_str(value)
+        assert actual_val is None or isinstance(actual_val, str)
+        assert actual_val == expected_output
