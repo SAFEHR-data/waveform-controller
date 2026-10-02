@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
+from typing import Optional
 
 from snakemake.io import glob_wildcards
 
@@ -18,8 +19,32 @@ from locations import (
     ALL_UPLOADED_JSON,
 )
 
+# Snakemake seems to like guessing the types of env vars, so
+# here are some methods to force them to the type they're supposed to be.
 
-def config_bool(value):
+
+def config_str(value) -> Optional[str]:
+    """Convert a config value from env/CLI to a string."""
+    if value is None:
+        return None
+    return str(value).strip()
+
+
+def config_int(value) -> Optional[int]:
+    """Convert a config value from env/CLI to an int.
+
+    :raises ValueError: if the string cannot be interpreted as an int (including if it
+        has a decimal point).
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    return int(s)
+
+
+def config_bool(value) -> bool:
     """Convert a config value from env/CLI to a bool."""
     s = str(value).strip().lower()
     if s in {"", "0", "false"}:
@@ -95,14 +120,20 @@ def timestamp_for_paths() -> str:
 
 
 def determine_eventual_outputs(
-    csv_wait_time: timedelta, process_only_yesterday: bool, process_datestring: str
+    csv_wait_time: timedelta,
+    process_only_n_days_ago: Optional[int] = None,
+    process_dates_regex: Optional[str] = None,
 ):
     """
     :param csv_wait_time: only process files older than this
-    :param process_only_yesterday: if false we process all dates, true only from yesterday
-    :param process_datestring: a regular expression to match datestrings. Has no effect if
-    process_only_yesterday is true
-    :returns: A list of InputCsvFile and a dictionary containing the hashed csn -> csn mappings.
+    :param process_only_n_days_ago: if None, process all dates,
+                                    if >=1 only from that many days ago (1 = yesterday),
+                                    else raise ValueError
+    :param process_dates_regex: Only has effect if process_only_n_days_ago is None.
+                                if process_dates_regex is None, all datestrings are included,
+                                 otherwise it is treated as a regular expression that must match datestrings
+                                 if they are to be included
+    :returns: A list of InputCsvFile and a dictionary containing the hashed csn -> csn mappings, according to the filtering rules.
     """
     # Discover all CSVs using the basic file name pattern
     before = time.perf_counter()
@@ -114,9 +145,12 @@ def determine_eventual_outputs(
     # Build reverse lookup using named wildcards
     _hash_to_csn: dict[str, str] = {}
 
-    if process_only_yesterday:
-        process_datestring = (
-            datetime.now(tz=timezone.utc).date() - timedelta(days=1)
+    if process_only_n_days_ago is not None:
+        if process_only_n_days_ago < 1:
+            raise ValueError("process_only_n_days_ago must be >= 1")
+        process_dates_regex = (
+            datetime.now(tz=timezone.utc).date()
+            - timedelta(days=process_only_n_days_ago)
         ).isoformat()
 
     for csn in all_wc.csn:
@@ -128,8 +162,11 @@ def determine_eventual_outputs(
     ):
         input_file_obj = InputCsvFile(date, csn, variable_id, channel_id, units)
         orig_file = input_file_obj.get_original_csv_path()
-        if re.search(process_datestring, date) is None:
-            print(f"Skipping file not from {process_datestring} {orig_file}")
+        if (
+            process_dates_regex is not None
+            and re.search(process_dates_regex, date) is None
+        ):
+            print(f"Skipping file not from {process_dates_regex} {orig_file}")
             continue
         if csn == "unmatched_csn":
             print(f"Skipping file with unmatched CSN: {orig_file}")
