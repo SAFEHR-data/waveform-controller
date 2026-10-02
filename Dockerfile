@@ -4,7 +4,11 @@ LABEL authors="Stephen Thompson, Jeremy Stein"
 # put it on both images even though we only need it on exporter.
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
-    apt-get install --yes --no-install-recommends cron && \
+    apt-get install --yes --no-install-recommends \
+      cron \
+      libgssapi-krb5-2 \
+      libkrb5-3 \
+      libltdl7 && \
     apt-get autoremove --yes && apt-get clean --yes && rm -rf /var/lib/apt/lists/*
 # uv image label "0.12.5"
 COPY --from=ghcr.io/astral-sh/uv@sha256:e85be844203885286c60ffad8a858d48afb6c5a5c237ca0e67f12e74b8f174b1 /uv /uvx /bin/

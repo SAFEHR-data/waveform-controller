@@ -32,7 +32,11 @@ snakemake --snakefile /app/src/pipeline/Snakefile \
   --resources ftps_server=1 \
   --cores "$SNAKEMAKE_CORES" \
   --until "$SNAKEMAKE_RULE_UNTIL" \
-  --config CSV_AGE_THRESHOLD_MINUTES="${CSV_AGE_THRESHOLD_MINUTES}" ONLY_USE_CSV_FROM_YESTERDAY="${ONLY_USE_CSV_FROM_YESTERDAY}" PROCESS_CSV_FROM_DATE="${PROCESS_CSV_FROM_DATE}"\
+  --config \
+      CSV_AGE_THRESHOLD_MINUTES="${CSV_AGE_THRESHOLD_MINUTES}" \
+      ONLY_USE_CSV_FROM_YESTERDAY="${ONLY_USE_CSV_FROM_YESTERDAY}" \
+      PROCESS_CSV_FROM_DATE="${PROCESS_CSV_FROM_DATE}" \
+      EHR_LOOKUP_BYPASS="${EHR_LOOKUP_BYPASS}" \
   >> "$outer_log_file" 2>&1
 ret_code=$?
 set -e
