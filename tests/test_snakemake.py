@@ -129,7 +129,7 @@ def _make_test_input_csv(csv_dir: Path):
         (None, "2", [0, 1, 2, 3, 4]),
         # but never a Z
         (None, "Z", []),
-        # with process only n days None and regex set to two days ago we should return the two files from two days ago
+        # with process only n days None and regex set to three days ago we should return the two files from three days ago
         (
             None,
             (datetime.now(tz=timezone.utc).date() - timedelta(days=3)).isoformat(),
