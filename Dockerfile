@@ -15,16 +15,20 @@ ARG UVCACHE=/root/.cache/uv
 COPY PIXL /PIXL
 WORKDIR /app
 COPY waveform-controller/pyproject.toml waveform-controller/uv.lock /app/
-RUN --mount=type=cache,target=${UVCACHE} uv pip install --system .
+# Install the locked dependency set into the system environment (uv sync
+# normally targets a venv, hence UV_PROJECT_ENVIRONMENT).
+RUN --mount=type=cache,target=${UVCACHE} \
+    UV_PROJECT_ENVIRONMENT=/usr/local uv sync --locked --no-dev --no-install-project
 COPY waveform-controller/. /app/
-RUN --mount=type=cache,target=${UVCACHE} uv pip install --system .
+RUN --mount=type=cache,target=${UVCACHE} uv pip install --system --no-deps .
 # Optional: only for integration-test image builds (compose/build-arg INSTALL_COVERAGE=1).
 # Editable install so imports resolve under /app/src (matches source=["src"] for coverage).
 # coverage.py is inert unless COVERAGE_PROCESS_START is set.
 ARG INSTALL_COVERAGE=0
 RUN --mount=type=cache,target=${UVCACHE} \
     if [ "$INSTALL_COVERAGE" = "1" ]; then \
-      uv pip install --system -e '.[coverage]'; \
+      UV_PROJECT_ENVIRONMENT=/usr/local uv sync --locked --no-dev --extra coverage --no-install-project && \
+      uv pip install --system --no-deps -e '.[coverage]'; \
     fi
 FROM waveform_base AS waveform_controller
 CMD ["emap-extract-waveform"]
